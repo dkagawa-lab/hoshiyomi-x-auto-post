@@ -1,0 +1,55 @@
+name: HOSHIYOMI Instagram auto post
+
+on:
+  schedule:
+    # UTC. Runs at 00:05 / 07:35 / 12:35 / 21:05 JST.
+    - cron: "5 15 * * *"
+    - cron: "35 22 * * *"
+    - cron: "35 3 * * *"
+    - cron: "5 12 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "1 means generate image/caption only without posting"
+        default: "1"
+      slot:
+        description: "Optional: midnight / morning / noon / night"
+        default: ""
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  post-instagram:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Japanese fonts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-noto-cjk
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate and post to Instagram
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_BUCKET: ${{ secrets.SUPABASE_BUCKET }}
+          INSTAGRAM_BUSINESS_ACCOUNT_ID: ${{ secrets.INSTAGRAM_BUSINESS_ACCOUNT_ID }}
+          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+          SITE_URL: https://hoshiyomi4u.com/m
+          DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
+        run: |
+          if [ -n "${{ github.event.inputs.slot }}" ]; then
+            python instagram_post.py "${{ github.event.inputs.slot }}"
+          else
+            python instagram_post.py
+          fi
