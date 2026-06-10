@@ -294,6 +294,18 @@ def post_to_x(text: str) -> dict[str, Any]:
         json={"text": text},
         timeout=30,
     )
+    if response.status_code == 401:
+        raise RuntimeError(
+            "X API returned 401 Unauthorized. Check that X_API_KEY, X_API_SECRET, "
+            "X_ACCESS_TOKEN, and X_ACCESS_SECRET are the OAuth 1.0a values from the "
+            "same app, and regenerate the Access Token after setting App permissions "
+            f"to Read and write. Response: {response.text}"
+        )
+    if response.status_code == 403:
+        raise RuntimeError(
+            "X API returned 403 Forbidden. The app may still be Read only, or the "
+            f"account/app may not have permission to create posts. Response: {response.text}"
+        )
     response.raise_for_status()
     return response.json()
 
