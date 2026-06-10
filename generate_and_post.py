@@ -21,7 +21,7 @@ JST = timezone(timedelta(hours=9))
 SITE_URL = os.environ.get("SITE_URL", "https://hoshiyomi4u.com/m")
 ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
 ANTHROPIC_VERSION = "2023-06-01"
-VALID_SLOTS = ("morning", "noon", "night")
+VALID_SLOTS = ("midnight", "morning", "noon", "night")
 
 SIGNS = [
     "牡羊座",
@@ -174,6 +174,8 @@ def todays_sky(now: datetime | None = None) -> dict[str, Any]:
 
 def slot_for(now: datetime | None = None) -> str:
     now = now.astimezone(JST) if now else datetime.now(JST)
+    if now.hour < 2:
+        return "midnight"
     if now.hour < 11:
         return "morning"
     if now.hour < 17:
@@ -182,12 +184,14 @@ def slot_for(now: datetime | None = None) -> str:
 
 
 SLOT_BRIEF = {
+    "midnight": "日付が変わった直後の投稿。今日の星の入口として、日付・月星座・月相・あれば天体イベントを静かに告げる。",
     "morning": "朝の投稿。今日の月星座と過ごし方のヒントを、やさしく短く伝える。",
     "noon": "昼の投稿。占星術の豆知識を、初心者にも分かる言葉で伝える。",
     "night": "夜の投稿。今日の星をふり返り、明日への小さな指針を静かに伝える。",
 }
 
 TEMPLATES = {
+    "midnight": "日が変わりました。{date}({weekday})の月は{moon_sign}、{moon_phase}。{event_line}今日の星の流れを、静かに受け取って。 #星読み",
     "morning": "{date}({weekday})の月は{moon_sign}。{moon_phase}の流れです。{event_line}今日は気持ちの反応を急がず、自分のペースを整えて。 #星読み",
     "noon": "月は約2.5日ごとに星座を移ります。いまは{moon_sign}。同じ日でも、生まれた時刻と場所で星の地図は変わります。 #占星術",
     "night": "今日もおつかれさまでした。{moon_phase}の夜。{event_line}明日の星は少しだけ違う顔を見せます。心をゆるめて休んで。 #星読み",

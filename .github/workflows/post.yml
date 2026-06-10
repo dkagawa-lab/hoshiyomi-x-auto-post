@@ -2,7 +2,8 @@ name: HOSHIYOMI X auto post
 
 on:
   schedule:
-    # UTC. Runs at 07:30 / 12:30 / 21:00 JST.
+    # UTC. Runs at 00:00 / 07:30 / 12:30 / 21:00 JST.
+    - cron: "0 15 * * *"
     - cron: "30 22 * * *"
     - cron: "30 3 * * *"
     - cron: "0 12 * * *"

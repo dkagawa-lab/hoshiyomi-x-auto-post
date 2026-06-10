@@ -1,10 +1,11 @@
 import pathlib
 import sys
 import unittest
+from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
-from generate_and_post import crosses, sign_of
+from generate_and_post import JST, crosses, sign_of, slot_for
 
 
 class AstrologyHelperTests(unittest.TestCase):
@@ -21,6 +22,15 @@ class AstrologyHelperTests(unittest.TestCase):
         self.assertFalse(crosses(350, 10, 180))
         self.assertFalse(crosses(10, 350, 0))
         self.assertTrue(crosses(10, 350, 180))
+
+    def test_slot_for_midnight_window(self):
+        self.assertEqual(slot_for(datetime(2026, 6, 10, 0, 0, tzinfo=JST)), "midnight")
+        self.assertEqual(slot_for(datetime(2026, 6, 10, 1, 59, tzinfo=JST)), "midnight")
+        self.assertEqual(slot_for(datetime(2026, 6, 10, 2, 0, tzinfo=JST)), "morning")
+
+    def test_slot_for_converts_to_jst(self):
+        utc = timezone(timedelta(0))
+        self.assertEqual(slot_for(datetime(2026, 6, 9, 15, 0, tzinfo=utc)), "midnight")
 
 
 if __name__ == "__main__":
