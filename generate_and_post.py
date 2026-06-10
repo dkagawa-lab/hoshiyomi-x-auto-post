@@ -306,6 +306,13 @@ def post_to_x(text: str) -> dict[str, Any]:
             "X API returned 403 Forbidden. The app may still be Read only, or the "
             f"account/app may not have permission to create posts. Response: {response.text}"
         )
+    if response.status_code == 402:
+        raise RuntimeError(
+            "X API returned 402 Payment Required. Your X Developer account or app "
+            "does not appear to have enough API credits/billing access for POST "
+            "/2/tweets. Open the X Developer Console, check Billing & credits, "
+            f"purchase/enable credits if required, then rerun. Response: {response.text}"
+        )
     response.raise_for_status()
     return response.json()
 
