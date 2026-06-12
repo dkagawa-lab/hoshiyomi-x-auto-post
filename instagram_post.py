@@ -295,12 +295,42 @@ def upload_to_supabase(image_path: Path, object_path: str) -> str:
     return f"{supabase_url}/storage/v1/object/public/{bucket}/{object_path}"
 
 
+def raise_graph_api_error(response: requests.Response) -> None:
+    try:
+        payload = response.json()
+    except ValueError:
+        payload = {"raw": response.text}
+
+    error = payload.get("error", {}) if isinstance(payload, dict) else {}
+    code = error.get("code")
+    subcode = error.get("error_subcode")
+    message = error.get("message", response.text)
+
+    if code == 190 and subcode == 463:
+        raise RuntimeError(
+            "META_ACCESS_TOKEN has expired. Generate a new long-lived Meta access "
+            "token and update the GitHub Repository secret named META_ACCESS_TOKEN. "
+            f"Meta response: {message}"
+        )
+    if code == 190:
+        raise RuntimeError(
+            "META_ACCESS_TOKEN is invalid or no longer authorized. Reissue the token "
+            "with instagram_basic, instagram_content_publish, pages_show_list, and "
+            f"pages_read_engagement permissions. Meta response: {message}"
+        )
+
+    raise RuntimeError(
+        "Instagram Graph API failed: "
+        f"{response.status_code} {json.dumps(payload, ensure_ascii=False)}"
+    )
+
+
 def graph_post(path: str, payload: dict[str, str]) -> dict[str, Any]:
     token = required_env("META_ACCESS_TOKEN")
     url = f"https://graph.facebook.com/{GRAPH_API_VERSION}/{path.lstrip('/')}"
     response = requests.post(url, data={**payload, "access_token": token}, timeout=60)
     if not response.ok:
-        raise RuntimeError(f"Instagram Graph API failed: {response.status_code} {response.text}")
+        raise_graph_api_error(response)
     return response.json()
 
 
@@ -309,8 +339,14 @@ def graph_get(path: str, params: dict[str, str]) -> dict[str, Any]:
     url = f"https://graph.facebook.com/{GRAPH_API_VERSION}/{path.lstrip('/')}"
     response = requests.get(url, params={**params, "access_token": token}, timeout=30)
     if not response.ok:
-        raise RuntimeError(f"Instagram Graph API failed: {response.status_code} {response.text}")
+        raise_graph_api_error(response)
     return response.json()
+
+
+def verify_instagram_access() -> None:
+    ig_account_id = required_env("INSTAGRAM_BUSINESS_ACCOUNT_ID")
+    account = graph_get(ig_account_id, {"fields": "id,username"})
+    print(f"[instagram:account] {json.dumps(account, ensure_ascii=False)}")
 
 
 def wait_for_container(container_id: str) -> None:
@@ -359,6 +395,8 @@ def main(argv: list[str] | None = None) -> None:
     if os.environ.get("DRY_RUN") == "1":
         print("[dry-run] skipped Supabase upload and Instagram publish")
         return
+
+    verify_instagram_access()
 
     object_path = f"cards/{now.strftime('%Y/%m/%d')}/{filename}"
     image_url = upload_to_supabase(local_path, object_path)

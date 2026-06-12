@@ -71,6 +71,17 @@ Public bucket: ON
 
 `META_ACCESS_TOKEN` は、Meta Graph API Explorerで取得したトークン、または `me/accounts` のレスポンスに含まれるFacebookページの `access_token` を使います。
 
+`META_ACCESS_TOKEN has expired` または `Session has expired` が出た場合は、Meta側のアクセストークンが期限切れです。Graph API Explorerで再発行し、必要な許可を付けたうえで、GitHub Repository secret の `META_ACCESS_TOKEN` を更新してください。短期トークンはすぐ失効するため、運用ではMetaのアクセストークンツールで長期トークンへ交換してから登録することを推奨します。
+
+必要な許可:
+
+```text
+instagram_basic
+instagram_content_publish
+pages_show_list
+pages_read_engagement
+```
+
 ## ローカル実行
 
 ```bash
