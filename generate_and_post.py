@@ -102,6 +102,62 @@ REFLECTION_GUIDANCE = {
     11: ("静かに回復する日", "何もできなくても、心を責めない夜にして"),
 }
 
+GUIDANCE_VARIANTS = {
+    0: [("主役運", "自分の感覚を最優先に"), ("始動運", "朝のうちに小さく一歩だけ動く"), ("自分軸の日", "人に合わせる前に本音を確認する")],
+    1: [("準備運", "予定を詰めず余白を作る"), ("温存運", "急ぐ用事ほど一呼吸置く"), ("整備運", "持ち物や予定を一つ軽くする")],
+    2: [("対話運", "短い連絡を一つ返す"), ("情報運", "気になったことを一つ調べる"), ("言葉の運", "曖昧な返事をひとつ整える")],
+    3: [("整え運", "家や仕事場を一か所整える"), ("土台運", "落ち着ける場所を先に作る"), ("生活運", "食事や睡眠の予定を崩しすぎない")],
+    4: [("追い風運", "好きなことに少し時間を使う"), ("表現運", "気分が上がる選択を一つ入れる"), ("遊び心の日", "正しさより楽しさを少し選ぶ")],
+    5: [("調整運", "抱えすぎた役目を一つ軽くする"), ("整理運", "細かいタスクを一つ終わらせる"), ("見直し運", "無理している約束を確認する")],
+    6: [("対人運", "相手の言葉を最後まで聞く"), ("関係運", "大事な人に柔らかく伝える"), ("バランス運", "譲る所と守る所を分ける")],
+    7: [("深掘り運", "本音を紙に書き出す"), ("集中運", "一人で考える時間を少し取る"), ("洞察運", "違和感を急いで消さず観察する")],
+    8: [("展開運", "いつもと違う選択を一つ試す"), ("冒険運", "知らない情報に触れてみる"), ("拡張運", "行きたい方向を言葉にする")],
+    9: [("仕事運", "先に結論を決めて動く"), ("達成運", "今日の優先順位を一つに絞る"), ("現実運", "数字や期限を先に確認する")],
+    10: [("仲間運", "相談できる人に声をかける"), ("つながり運", "一人で抱えず小さく共有する"), ("未来運", "理想に近い人の動きを見る")],
+    11: [("休息運", "無理に答えを出さず深呼吸を"), ("回復運", "静かな時間を先に確保する"), ("浄化運", "気が散るものを一つ手放す")],
+}
+
+REFLECTION_VARIANTS = {
+    0: [("自分の本音が見えた日", "迷ったなら、最初に浮かんだ気持ちを否定しないで"), ("自分に戻る夜", "うまく言えなかった思いも、今夜はそのまま置いて"), ("輪郭が戻る日", "選べなかったことより、感じたことを覚えていて")],
+    1: [("無理の量に気づく日", "進まなくても、余白を作れたなら十分"), ("ペースを戻す夜", "急げなかった分、体は何かを守っていたのかも"), ("抱え方を見直す日", "できなかった所に、減らすヒントがあります")],
+    2: [("言葉の温度を見直す日", "返せなかった連絡は、明日短く整えれば大丈夫"), ("伝え方を選ぶ夜", "飲み込んだ言葉は、少しやわらかくして明日へ"), ("情報をほどく日", "考えすぎたなら、結論を一晩寝かせて")],
+    3: [("居場所を整える日", "片づかなくても、安心できる場所を一つ思い出して"), ("心の帰り道を探す夜", "疲れたなら、誰かの期待から少し離れて"), ("土台を感じる日", "完璧でなくても、休める場所があれば十分")],
+    4: [("好きなものに救われる日", "楽しめなかったなら、疲れを先に認めて"), ("ときめきを拾う夜", "気分が乗らなかった自分も責めないで"), ("光を思い出す日", "小さく笑えた瞬間があれば、それを残して")],
+    5: [("抱えすぎに気づく日", "完璧にできなくても、減らしたい役目が見えたなら前進"), ("整える前の夜", "散らかったままでも、優先順位が見えれば十分"), ("細部をほどく日", "気になった所を全部直さなくていい")],
+    6: [("人との距離を測る日", "合わせすぎたなら、今夜は自分の気持ちへ戻って"), ("関係を眺める夜", "誰かを思った時間も、あなたのやさしさです"), ("バランスを学ぶ日", "うまく譲れなくても、境界線を知れたなら十分")],
+    7: [("心の奥をのぞく日", "重く感じたなら、答えより感情の名前を置いて"), ("深いところに触れる夜", "言葉にならない気持ちを急がせないで"), ("静かな洞察の日", "不安の奥にある願いだけ拾って")],
+    8: [("次の可能性を見る日", "動けなかったなら、行きたい方向だけ残して"), ("遠くを見る夜", "今すぐ行けなくても、望みは消さなくていい"), ("視野が開く日", "知らなかった選択肢に気づけたなら前進")],
+    9: [("現実的な判断をする日", "成果が薄くても、優先順位が見えたなら十分"), ("積み上げを確かめる夜", "進みが遅くても、向き合った時間は残ります"), ("責任をほどく日", "背負いすぎたなら、明日は一つだけ軽くして")],
+    10: [("誰かとのつながりを感じる日", "頼れなかったなら、明日ひとことだけ声をかけて"), ("未来を共有する夜", "一人で考えすぎたなら、明日は小さく相談を"), ("仲間を思い出す日", "孤独に見えた時間にも、次の縁の種があります")],
+    11: [("静かに回復する日", "何もできなくても、心を責めない夜にして"), ("眠る前にほどく夜", "答えが出ないことは、今夜の荷物にしないで"), ("休む勇気の日", "止まった時間も、明日のあなたを守っています")],
+}
+
+TEXT_VARIANTS = {
+    "midnight": [
+        "{date}({weekday})、今日の月は{moon_sign}。{moon_phase}の入口です。{event_line}急がず、星の流れを一つだけ意識して。 #星読み",
+        "{date}({weekday})の空。月は{moon_sign}、{moon_phase}。{event_line}今日の始まりに、心の向きをそっと整えて。 #星読み",
+        "新しい日が始まりました。月は{moon_sign}、{moon_phase}。{event_line}今日は小さな違和感を見逃さずに。 #星読み",
+    ],
+    "noon": [
+        "いまの月は{moon_sign}。月は約2.5日で星座を移り、心の反応の出方を少しずつ変えていきます。 #占星術",
+        "昼の星読みメモ。月は{moon_sign}にあります。今日の気分の揺れも、空のリズムを知る手がかりです。 #占星術",
+        "月がいる星座は、その日の受け取り方に表れます。いまは{moon_sign}。焦らず自分の反応を観察して。 #占星術",
+    ],
+    "night": [
+        "{date}({weekday})の星を振り返る夜。月は{moon_sign}、{moon_phase}。{event_line}できたことも、できなかったことも、明日の選び方につながります。 #星読み",
+        "今日の空を閉じる前に。月は{moon_sign}、{moon_phase}。{event_line}進めなかった部分は、責めるより整えるための合図に。 #星読み",
+        "夜の星読み。月は{moon_sign}、{moon_phase}。{event_line}今日残った気持ちを、明日の自分へのメモにして。 #星読み",
+    ],
+}
+
+STYLE_PROFILES = [
+    "観察メモ調。感情を押しつけず、星の事実から静かに読む",
+    "問いかけ調。読者が自分の一日を思い出せる余白を残す",
+    "短い宣言調。冒頭を強くし、同じ語尾を続けない",
+    "余韻のある助言調。抽象と具体を一文ずつ混ぜる",
+    "実用寄り。今日やることを具体的にし、詩的表現を控えめにする",
+]
+
 PLANETS = {
     swe.SUN: "太陽",
     swe.MOON: "月",
@@ -286,15 +342,42 @@ def moon_theme(sky: dict[str, Any]) -> str:
     return MOON_THEMES[element]
 
 
+def variation_index(sky: dict[str, Any], slot: str, salt: str, size: int) -> int:
+    if size <= 0:
+        return 0
+    key = f"{sky.get('date', '')}-{sky.get('moon_sign', '')}-{slot}-{salt}"
+    return sum((index + 1) * ord(char) for index, char in enumerate(key)) % size
+
+
+def style_profile(sky: dict[str, Any], slot: str) -> str:
+    return STYLE_PROFILES[variation_index(sky, slot, "style", len(STYLE_PROFILES))]
+
+
+def choose_by_sky(options: list[tuple[str, str]], sky: dict[str, Any], slot: str, salt: str) -> tuple[str, str]:
+    return options[variation_index(sky, slot, salt, len(options))]
+
+
 def sign_guidance_line(sign: str, moon_sign: str) -> str:
     diff = (SIGN_INDEX[sign] - SIGN_INDEX[moon_sign]) % 12
     tone, action = RELATION_GUIDANCE[diff]
     return f"{sign}: {tone}。{action}。"
 
 
+def varied_sign_guidance_line(sign: str, sky: dict[str, Any], slot: str = "morning") -> str:
+    diff = (SIGN_INDEX[sign] - SIGN_INDEX[sky["moon_sign"]]) % 12
+    tone, action = choose_by_sky(GUIDANCE_VARIANTS[diff], sky, slot, sign)
+    return f"{sign}: {tone}。{action}。"
+
+
 def sign_reflection_line(sign: str, moon_sign: str) -> str:
     diff = (SIGN_INDEX[sign] - SIGN_INDEX[moon_sign]) % 12
     tone, reflection = REFLECTION_GUIDANCE[diff]
+    return f"{sign}: {tone}。{reflection}。"
+
+
+def varied_sign_reflection_line(sign: str, sky: dict[str, Any], slot: str = "night") -> str:
+    diff = (SIGN_INDEX[sign] - SIGN_INDEX[sky["moon_sign"]]) % 12
+    tone, reflection = choose_by_sky(REFLECTION_VARIANTS[diff], sky, slot, sign)
     return f"{sign}: {tone}。{reflection}。"
 
 
@@ -320,26 +403,30 @@ def append_link_to_tweet(text: str) -> str:
 def build_morning_thread(sky: dict[str, Any]) -> list[str]:
     focus = sky_focus_sentence(sky)
     theme = moon_theme(sky)
-    overview = (
-        f"{sky['date']}({sky['weekday']})の星。月は{sky['moon_sign']}、{sky['moon_phase']}。"
-        f"{focus}今日は「{theme}」が鍵。12星座別は太陽星座を目安に。#星読み"
-    )
+    overview_variants = [
+        f"{sky['date']}({sky['weekday']})の星。月は{sky['moon_sign']}、{sky['moon_phase']}。{focus}今日は「{theme}」が鍵。12星座別は太陽星座を目安に。#星読み",
+        f"朝の星読み。月は{sky['moon_sign']}、{sky['moon_phase']}。{focus}今日のテーマは「{theme}」。太陽星座別に見ていきます。#星読み",
+        f"{sky['date']}の空は、月が{sky['moon_sign']}に滞在中。{focus}今日は{theme}ことから始めて。12星座別の流れです。#星読み",
+    ]
+    overview = overview_variants[variation_index(sky, "morning", "overview", len(overview_variants))]
     posts = [append_link_to_tweet(overview)]
     for group in SIGN_GROUPS:
-        lines = [sign_guidance_line(sign, sky["moon_sign"]) for sign in group]
+        lines = [varied_sign_guidance_line(sign, sky) for sign in group]
         posts.append(trim_tweet("\n".join(lines)))
     return posts
 
 
 def build_night_thread(sky: dict[str, Any]) -> list[str]:
     focus = sky_focus_sentence(sky)
-    overview = (
-        f"{sky['date']}({sky['weekday']})の星の振り返り。月は{sky['moon_sign']}、{sky['moon_phase']}。"
-        f"{focus}できたことも、できなかったことも、明日の選び方につながります。#星読み"
-    )
+    overview_variants = [
+        f"{sky['date']}({sky['weekday']})の星の振り返り。月は{sky['moon_sign']}、{sky['moon_phase']}。{focus}できたことも、できなかったことも、明日の選び方につながります。#星読み",
+        f"夜の星読み。月は{sky['moon_sign']}、{sky['moon_phase']}。{focus}今日残った気持ちは、明日の自分へのメモにして。#星読み",
+        f"一日を閉じる前に。月は{sky['moon_sign']}、{sky['moon_phase']}。{focus}うまくいかなかった所にも、次のヒントがあります。#星読み",
+    ]
+    overview = overview_variants[variation_index(sky, "night", "overview", len(overview_variants))]
     posts = [trim_tweet(overview)]
     for group in SIGN_GROUPS:
-        lines = [sign_reflection_line(sign, sky["moon_sign"]) for sign in group]
+        lines = [varied_sign_reflection_line(sign, sky) for sign in group]
         posts.append(trim_tweet("\n".join(lines)))
     return posts
 
@@ -355,7 +442,9 @@ def append_required_link(text: str, slot: str, sky: dict[str, Any]) -> str:
 
 
 def fallback_text(sky: dict[str, Any], slot: str) -> str:
-    text = TEMPLATES[slot].format(event_line=primary_event_sentence(sky), **sky)
+    templates = TEXT_VARIANTS.get(slot, [TEMPLATES[slot]])
+    template = templates[variation_index(sky, slot, "fallback", len(templates))]
+    text = template.format(event_line=primary_event_sentence(sky), **sky)
     return append_required_link(text, slot, sky)
 
 
@@ -374,12 +463,18 @@ def claude_prompt(sky: dict[str, Any], slot: str) -> str:
 投稿スロット:
 {SLOT_BRIEF[slot]}
 
+今日の文体指定:
+{style_profile(sky, slot)}
+
 制約:
 - 全角120字以内。リンクは字数に含めない
 - ハッシュタグは #星読み または #占星術 を1つだけ入れる
 - 「絶対」「必ず当たる」などの断定・効果保証表現は禁止
 - 不安を煽らない。逆行は「見直しに向く時期」のような前向きな整理にする
 - 天体イベント(新月・満月・星座移動・逆行)がある日はそれを最優先で扱う
+- 直近投稿と同じように見える定型文を避ける。「今日の星」「整える」「鍵」「明日へ」の同時多用は禁止
+- 導入文、語尾、文のリズムを前回と変える。毎回「月は〜」で始めない
+- 抽象表現だけにせず、ひとつだけ具体的な行動や視点を入れる
 - {link_rule}
 - 投稿文のみを出力する。前置き、説明、引用符は不要"""
 
@@ -398,6 +493,9 @@ def morning_thread_prompt(sky: dict[str, Any]) -> str:
 今日の星のデータ:
 {json.dumps(sky, ensure_ascii=False, indent=2)}
 
+今日の文体指定:
+{style_profile(sky, "morning")}
+
 作るもの:
 - Xのスレッド投稿を5件
 - 1件目: 今日の星の動きの概要。月星座、月相、重要イベント、今日の鍵を入れる。最後に #星読み と {SITE_URL} を入れる
@@ -413,7 +511,10 @@ def morning_thread_prompt(sky: dict[str, Any]) -> str:
 - 12星座別は太陽星座を目安にした表現にする
 - 「絶対」「必ず当たる」などの断定・効果保証表現は禁止
 - 不安を煽らない。逆行は「見直しに向く時期」のような前向きな整理にする
-- 天体イベント(新月・満月・星座移動・逆行)がある日は1件目で最優先に扱う"""
+- 前回と同じ型に見える投稿は禁止。各星座の「運気名」と「やること」は、似た言い回しを連続させない
+- 「整える」「見直す」「余白」「気づく」を全投稿で繰り返しすぎない
+- 天体イベント(新月・満月・星座移動・逆行)がある日は1件目で最優先に扱う
+- 3星座ごとの投稿は、各行の語尾をできるだけ変える"""
 
 
 def night_thread_prompt(sky: dict[str, Any]) -> str:
@@ -421,6 +522,9 @@ def night_thread_prompt(sky: dict[str, Any]) -> str:
 
 今日の星のデータ:
 {json.dumps(sky, ensure_ascii=False, indent=2)}
+
+今日の文体指定:
+{style_profile(sky, "night")}
 
 作るもの:
 - Xのスレッド投稿を5件
@@ -437,7 +541,10 @@ def night_thread_prompt(sky: dict[str, Any]) -> str:
 - 12星座別は太陽星座を目安にした表現にする
 - 「絶対」「必ず当たる」などの断定・効果保証表現は禁止
 - 不安を煽らない。できなかった人を責めず、明日に向けて静かに整える言葉にする
-- 天体イベント(新月・満月・星座移動・逆行)がある日は1件目で最優先に扱う"""
+- 天体イベント(新月・満月・星座移動・逆行)がある日は1件目で最優先に扱う
+- 前回と同じ型に見える投稿は禁止。各星座の「振り返り名」と「受け止め方」は、似た言い回しを連続させない
+- 「できなかった」「責めない」「明日」を全行で繰り返しすぎない
+- 3星座ごとの投稿は、各行の語尾をできるだけ変える"""
 
 
 def extract_claude_posts(payload: dict[str, Any]) -> list[str]:

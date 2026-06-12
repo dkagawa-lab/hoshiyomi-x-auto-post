@@ -76,10 +76,24 @@ class AstrologyHelperTests(unittest.TestCase):
         posts = build_night_thread(sky)
 
         self.assertEqual(len(posts), 5)
-        self.assertIn("振り返り", posts[0])
+        self.assertIn("#星読み", posts[0])
         self.assertIn("牡羊座", posts[1])
         self.assertIn("魚座", posts[4])
         self.assertTrue(all(len(post) <= MAX_TWEET_CHARS for post in posts))
+
+    def test_x_zodiac_threads_vary_by_date(self):
+        sky = {
+            "date": "2026年06月12日",
+            "weekday": "金曜日",
+            "moon_sign": "牡牛座",
+            "moon_phase": "新月前の月",
+            "events": [],
+            "retrogrades": ["冥王星(水瓶座)"],
+        }
+        next_day = {**sky, "date": "2026年06月13日", "weekday": "土曜日"}
+
+        self.assertNotEqual(build_morning_thread(sky)[1], build_morning_thread(next_day)[1])
+        self.assertNotEqual(build_night_thread(sky)[1], build_night_thread(next_day)[1])
 
     def test_instagram_zodiac_captions_include_all_signs(self):
         sky = {
