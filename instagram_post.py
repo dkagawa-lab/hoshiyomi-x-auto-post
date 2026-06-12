@@ -26,17 +26,22 @@ from generate_and_post import (
     JST,
     PLANETS,
     SITE_URL,
+    SIGNS,
+    SIGN_ELEMENTS,
     SIGN_GROUPS,
+    SIGN_INDEX,
     calc,
     jd_from,
     moon_theme,
     VALID_SLOTS,
     primary_event_sentence,
-    sign_guidance_line,
-    sign_reflection_line,
+    retrograde_sentence,
     slot_for,
+    style_profile,
     sky_focus_sentence,
     todays_sky,
+    varied_sign_guidance_line,
+    varied_sign_reflection_line,
 )
 
 GRAPH_API_VERSION = os.environ.get("META_GRAPH_API_VERSION", "v23.0")
@@ -60,17 +65,17 @@ CAPTION_BRIEF = {
 }
 
 CAPTION_TEMPLATES = {
-    "midnight": "{date}。日が変わりました。月は{moon_sign}、{moon_phase}。{event_line}今日の星の流れを、静かに受け取ってください。\n\n#星読み #占星術 #HOSHIYOMI",
-    "morning": "{date}の月は{moon_sign}。{moon_phase}の流れです。{event_line}今日は反応を急がず、自分の感覚を整えるところから。\n\n#星読み #占星術 #HOSHIYOMI",
-    "noon": "月は約2.5日ごとに星座を移ります。いまの月は{moon_sign}。同じ日でも、生まれた時刻と場所で星の地図は変わります。\n\n#星読み #占星術 #HOSHIYOMI",
-    "night": "今日もおつかれさまでした。{moon_phase}の夜。{event_line}明日の星は、また少し違う表情を見せます。\n\n#星読み #占星術 #HOSHIYOMI",
+    "midnight": "{date}。日が変わりました。\n月は{moon_sign}、{moon_phase}。\n{event_line}今日の鍵は「{theme}」。予定を増やす前に、心の向きを一つ決めておくと流れを受け取りやすい日です。\n\n#星読み #占星術 #HOSHIYOMI",
+    "morning": "{date}の月は{moon_sign}。{moon_phase}の流れです。\n{event_line}今日は「{theme}」を意識して、反応を急がず、自分のペースに戻ることから始めてください。\n\n#星読み #占星術 #HOSHIYOMI",
+    "noon": "いま月は{moon_sign}にあります。\n月は約2.5日ごとに星座を移り、同じ出来事への反応の出方を少しずつ変えていきます。今日は「{theme}」を観察すると、午後の選び方が整いやすくなります。\n\n#星読み #占星術 #HOSHIYOMI",
+    "night": "今日もおつかれさまでした。\n月は{moon_sign}、{moon_phase}。\n{event_line}うまくできたことだけでなく、引っかかった感情にも明日のヒントがあります。\n\n#星読み #占星術 #HOSHIYOMI",
 }
 
 IMAGE_MESSAGES = {
-    "midnight": "日が変わりました。\n今日の星の流れを、静かに受け取って。",
-    "morning": "今日の星の流れから、\n12星座別の運気を読みます。",
-    "noon": "月の位置は、心の反応の出方をそっと映します。",
-    "night": "今日の星を振り返り、\n明日の選び方へつなげます。",
+    "midnight": "今日の星の入口。\n月のサインと天体の動きから、一日の質感を読みます。",
+    "morning": "朝の星読み。\n今日の空から、12星座別の使い方まで落とし込みます。",
+    "noon": "昼の星読みメモ。\n月の位置は、反応の出方と選び方をそっと映します。",
+    "night": "夜の振り返り。\n今日の星を、明日の選び方へつなげます。",
 }
 
 PLANET_MARKS = {
@@ -91,6 +96,58 @@ SLOT_TITLES = {
     "morning": "朝の星読み",
     "noon": "星読みメモ",
     "night": "夜の振り返り",
+}
+
+SIGN_SHORT_LABELS = {
+    "牡羊座": "牡羊",
+    "牡牛座": "牡牛",
+    "双子座": "双子",
+    "蟹座": "蟹",
+    "獅子座": "獅子",
+    "乙女座": "乙女",
+    "天秤座": "天秤",
+    "蠍座": "蠍",
+    "射手座": "射手",
+    "山羊座": "山羊",
+    "水瓶座": "水瓶",
+    "魚座": "魚",
+}
+
+ELEMENT_TRAITS = {
+    "火": ("熱量", "動きながら気持ちに火を入れる"),
+    "地": ("現実", "体感と予定を具体的に整える"),
+    "風": ("言葉", "情報を選び、伝え方を軽くする"),
+    "水": ("本音", "感情の揺れを無理に急がせない"),
+}
+
+IMAGE_GUIDANCE_ACTIONS = {
+    0: "本音を先に確認",
+    1: "急ぐ前に一呼吸",
+    2: "返事を一つ整える",
+    3: "居場所を整える",
+    4: "好きなものを選ぶ",
+    5: "抱えすぎを減らす",
+    6: "相手の言葉を聞く",
+    7: "違和感を書き出す",
+    8: "行きたい方を言葉に",
+    9: "優先順位を一つに",
+    10: "小さく相談する",
+    11: "静かな時間を確保",
+}
+
+IMAGE_REFLECTION_ACTIONS = {
+    0: "最初の本音を残す",
+    1: "減らすヒントを見る",
+    2: "言葉を明日へほどく",
+    3: "安心できる場所へ",
+    4: "笑えた瞬間を残す",
+    5: "完璧より優先順位",
+    6: "境界線を思い出す",
+    7: "感情の名前を置く",
+    8: "望みだけ残す",
+    9: "背負いすぎを軽く",
+    10: "ひとこと頼ってみる",
+    11: "責めずに休む",
 }
 
 
@@ -156,24 +213,108 @@ def draw_centered(
     draw.text(((CARD_SIZE[0] - width) // 2, y), text, font=font, fill=fill)
 
 
+def clean_event_line(text: str) -> str:
+    return " ".join(text.strip().rstrip("。").split())
+
+
+def event_or_retrograde_line(sky: dict[str, Any]) -> str:
+    event = primary_event_sentence(sky)
+    if event:
+        return clean_event_line(event)
+    retrograde = retrograde_sentence(sky)
+    if retrograde:
+        return clean_event_line(retrograde)
+    return "大きな天体イベントは控えめ。月のサインが一日の肌触りを作ります"
+
+
+def image_headline(sky: dict[str, Any], slot: str) -> str:
+    if sky.get("events"):
+        return clean_event_line(str(sky["events"][0]))
+    if slot == "morning":
+        return f"月{sky['moon_sign']}の日は、{moon_theme(sky)}"
+    if slot == "night":
+        return "今日の反応を、明日の選び方へ"
+    if slot == "noon":
+        return f"月{sky['moon_sign']}で読む、心の動き"
+    return f"{sky['date']}の星が動き出します"
+
+
+def reading_points(sky: dict[str, Any], slot: str) -> list[str]:
+    element = SIGN_ELEMENTS.get(sky["moon_sign"], "地")
+    element_label, element_action = ELEMENT_TRAITS[element]
+    focus = event_or_retrograde_line(sky)
+    retrogrades = sky.get("retrogrades", [])
+    retro = f"逆行中: {' / '.join(retrogrades[:3])}。急ぐより再確認へ。" if retrogrades else ""
+
+    if slot == "night":
+        points = [
+            focus,
+            f"月{sky['moon_sign']}の{element_label}が、今日の反応の跡を残します。",
+            "できた/できないより、何に心が動いたかを拾う夜。",
+        ]
+    elif slot == "noon":
+        points = [
+            focus,
+            f"月{sky['moon_sign']}は、{element_action}流れ。",
+            "午後は予定より、反応の癖を観察すると読みやすい日。",
+        ]
+    elif slot == "midnight":
+        points = [
+            focus,
+            f"今日の鍵は「{moon_theme(sky)}」。",
+            "一日の始まりに、無理なく意識するテーマを一つだけ。",
+        ]
+    else:
+        points = [
+            focus,
+            f"月{sky['moon_sign']}は、{element_action}日。",
+            f"今日の鍵は「{moon_theme(sky)}」。太陽星座別に使い方を確認して。",
+        ]
+
+    if retro and retro not in points:
+        points.append(retro)
+    return points[:3]
+
+
+def parse_sign_line(line: str) -> tuple[str, str, str]:
+    normalized = line.replace(":", "：", 1).strip()
+    sign, _, rest = normalized.partition("：")
+    parts = [part.strip() for part in rest.split("。") if part.strip()]
+    tone = parts[0] if parts else ""
+    action = parts[1] if len(parts) > 1 else ""
+    return sign, tone, action
+
+
+def sign_digest_items(sky: dict[str, Any], slot: str) -> list[tuple[str, str, str]]:
+    if slot == "night":
+        lines = [varied_sign_reflection_line(sign, sky, "night") for sign in SIGNS]
+        action_map = IMAGE_REFLECTION_ACTIONS
+    else:
+        lines = [varied_sign_guidance_line(sign, sky, "morning") for sign in SIGNS]
+        action_map = IMAGE_GUIDANCE_ACTIONS
+    items: list[tuple[str, str, str]] = []
+    for line in lines:
+        sign, tone, _action = parse_sign_line(line)
+        diff = (SIGN_INDEX[sign] - SIGN_INDEX[sky["moon_sign"]]) % 12
+        items.append((sign, tone, action_map[diff]))
+    return items
+
+
 def zodiac_lines(sky: dict[str, Any], mode: str) -> list[str]:
     if mode == "night":
-        formatter = sign_reflection_line
-    else:
-        formatter = sign_guidance_line
-    lines: list[str] = []
-    for group in SIGN_GROUPS:
-        for sign in group:
-            lines.append(formatter(sign, sky["moon_sign"]).replace(":", "：", 1))
-    return lines
+        return [varied_sign_reflection_line(sign, sky, "night").replace(":", "：", 1) for sign in SIGNS]
+    return [varied_sign_guidance_line(sign, sky, "morning").replace(":", "：", 1) for sign in SIGNS]
 
 
 def zodiac_caption(sky: dict[str, Any], slot: str) -> str:
+    points = "\n".join(f"・{point}" for point in reading_points(sky, slot))
     if slot == "morning":
         lead = (
             f"{sky['date']}の星読み。\n"
             f"月は{sky['moon_sign']}、{sky['moon_phase']}。\n"
-            f"{sky_focus_sentence(sky)}今日は「{moon_theme(sky)}」が鍵です。\n\n"
+            f"{sky_focus_sentence(sky)}\n\n"
+            "今日の読み筋\n"
+            f"{points}\n\n"
             "12星座別の運気と、今日やるといいこと。\n"
             "太陽星座を目安に読んでください。\n"
         )
@@ -182,14 +323,17 @@ def zodiac_caption(sky: dict[str, Any], slot: str) -> str:
         lead = (
             f"{sky['date']}の星の振り返り。\n"
             f"月は{sky['moon_sign']}、{sky['moon_phase']}。\n"
-            f"{sky_focus_sentence(sky)}できたことも、できなかったことも、明日の選び方につながります。\n\n"
+            f"{sky_focus_sentence(sky)}\n\n"
+            "今夜の読み筋\n"
+            f"{points}\n\n"
             "12星座別の振り返り。\n"
+            "できたことも、できなかったことも、明日の選び方につなげてください。\n"
             "太陽星座を目安に読んでください。\n"
         )
         body = "\n".join(zodiac_lines(sky, "night"))
     else:
         raise ValueError(f"zodiac caption is not supported for slot: {slot}")
-    return f"{lead}\n{body}\n\n#星読み #占星術 #HOSHIYOMI"
+    return f"{lead}\n{body}\n\n出生図から読むならプロフィールへ。\n{SITE_URL}\n\n#星読み #占星術 #HOSHIYOMI"
 
 
 def create_background(seed: str) -> Image.Image:
@@ -250,6 +394,7 @@ def draw_star_chart(
     positions: list[dict[str, Any]],
     font: ImageFont.ImageFont,
     small_font: ImageFont.ImageFont,
+    scale: float = 1.0,
 ) -> None:
     gold = (226, 195, 118)
     pale_gold = (249, 229, 160)
@@ -257,9 +402,11 @@ def draw_star_chart(
     muted = (158, 154, 188)
     dark = (16, 18, 45)
 
-    outer = 372
-    middle = 302
-    inner = 205
+    outer = int(372 * scale)
+    middle = int(302 * scale)
+    inner = int(205 * scale)
+    label_offset = int(38 * scale)
+    sign_radius = max(15, int(24 * scale))
 
     for radius, color, width in ((outer, line, 3), (middle, (63, 61, 112), 2), (inner, (52, 51, 98), 2)):
         draw.ellipse(
@@ -275,21 +422,21 @@ def draw_star_chart(
         draw.line((x1, y1, x2, y2), fill=(58, 56, 104), width=1)
 
         label_degree = degree + 15
-        lx, ly = point_on_wheel(center, outer - 38, label_degree)
+        lx, ly = point_on_wheel(center, outer - label_offset, label_degree)
         label = sign.replace("座", "")
         box = draw.textbbox((0, 0), label, font=small_font)
         draw.text((lx - (box[2] - box[0]) // 2, ly - (box[3] - box[1]) // 2), label, font=small_font, fill=muted)
 
     for position in positions:
-        radius = 248 if position["name"] in ("太陽", "月") else 276
+        radius = int((248 if position["name"] in ("太陽", "月") else 276) * scale)
         x, y = point_on_wheel(center, radius, position["longitude"])
         color = pale_gold if position["name"] in ("太陽", "月") else gold
-        draw.ellipse((x - 24, y - 24, x + 24, y + 24), fill=dark, outline=color, width=2)
+        draw.ellipse((x - sign_radius, y - sign_radius, x + sign_radius, y + sign_radius), fill=dark, outline=color, width=2)
         label = position["mark"]
         box = draw.textbbox((0, 0), label, font=font)
         draw.text((x - (box[2] - box[0]) // 2, y - (box[3] - box[1]) // 2 - 2), label, font=font, fill=color)
         if position["retrograde"]:
-            draw.text((x + 18, y - 32), "R", font=small_font, fill=(244, 206, 132))
+            draw.text((x + int(18 * scale), y - int(32 * scale)), "R", font=small_font, fill=(244, 206, 132))
 
 
 def moon_phase_fraction(phase: str) -> float:
@@ -318,42 +465,125 @@ def draw_moon_disc(draw: ImageDraw.ImageDraw, center: tuple[int, int], phase: st
         draw.ellipse((x - radius, y - radius, x + shadow_width - radius, y + radius), fill=(19, 22, 52))
 
 
+def truncate_to_width(
+    draw: ImageDraw.ImageDraw,
+    text: str,
+    font: ImageFont.ImageFont,
+    max_width: int,
+) -> str:
+    if text_width(draw, text, font) <= max_width:
+        return text
+    clipped = text
+    while clipped and text_width(draw, f"{clipped}…", font) > max_width:
+        clipped = clipped[:-1]
+    return f"{clipped}…" if clipped else ""
+
+
+def draw_reading_panel(
+    draw: ImageDraw.ImageDraw,
+    y: int,
+    sky: dict[str, Any],
+    slot: str,
+    title_font: ImageFont.ImageFont,
+    body_font: ImageFont.ImageFont,
+) -> int:
+    gold = (229, 199, 121)
+    white = (247, 244, 232)
+    panel = (17, 20, 49)
+    border = (88, 82, 132)
+    x1, x2 = 82, 998
+    height = 178
+    draw.rounded_rectangle((x1, y, x2, y + height), radius=24, fill=panel, outline=border, width=2)
+    title = "今夜の読み筋" if slot == "night" else "今日の読み筋"
+    draw.text((116, y + 24), title, font=title_font, fill=gold)
+    line_y = y + 72
+    for point in reading_points(sky, slot):
+        line = truncate_to_width(draw, f"・{point}", body_font, 830)
+        draw.text((116, line_y), line, font=body_font, fill=white)
+        line_y += 32
+    return y + height
+
+
+def draw_zodiac_digest(
+    draw: ImageDraw.ImageDraw,
+    y: int,
+    sky: dict[str, Any],
+    slot: str,
+    header_font: ImageFont.ImageFont,
+    sign_font: ImageFont.ImageFont,
+    small_font: ImageFont.ImageFont,
+) -> int:
+    gold = (229, 199, 121)
+    pale = (248, 235, 186)
+    white = (247, 244, 232)
+    muted = (178, 174, 200)
+    cell_fill = (18, 22, 56)
+    cell_border = (69, 66, 112)
+    accent = (183, 136, 74)
+
+    items = sign_digest_items(sky, slot)
+    grid_y = y + 60
+    margin_x = 58
+    gap = 8
+    columns = 4
+    cell_w = (CARD_SIZE[0] - margin_x * 2 - gap * (columns - 1)) // columns
+    cell_h = 58
+    row_gap = 8
+    rows = math.ceil(len(items) / columns)
+    area_bottom = grid_y + rows * cell_h + max(rows - 1, 0) * row_gap
+    draw.rounded_rectangle((58, y - 12, 1022, area_bottom + 12), radius=24, fill=(12, 16, 42), outline=(58, 56, 98), width=1)
+
+    title = "十二星座別 今夜の振り返り" if slot == "night" else "十二星座別 今日の使い方"
+    draw.text((82, y), title, font=header_font, fill=gold)
+    draw.text((82, y + 34), "太陽星座を目安に読んでください", font=small_font, fill=muted)
+
+    for index, (sign, tone, action) in enumerate(items):
+        col = index % columns
+        row = index // columns
+        x = margin_x + col * (cell_w + gap)
+        cy = grid_y + row * (cell_h + row_gap)
+        draw.rounded_rectangle((x, cy, x + cell_w, cy + cell_h), radius=16, fill=cell_fill, outline=cell_border, width=1)
+        draw.rectangle((x, cy, x + 4, cy + cell_h), fill=accent)
+        label = SIGN_SHORT_LABELS.get(sign, sign.replace("座", ""))
+        draw.text((x + 14, cy + 9), label, font=sign_font, fill=pale)
+        draw.text((x + 70, cy + 9), truncate_to_width(draw, tone, sign_font, cell_w - 88), font=sign_font, fill=white)
+        draw.text((x + 14, cy + 34), truncate_to_width(draw, action, small_font, cell_w - 28), font=small_font, fill=muted)
+    return area_bottom
+
+
 def generate_card(sky: dict[str, Any], slot: str, output_path: Path, now: datetime | None = None) -> Path:
     now = now or datetime.now(JST)
     image = create_background(f"{sky['date']}-{slot}")
     draw = ImageDraw.Draw(image)
 
-    brand_font = find_font(54)
-    small_font = find_font(30)
-    title_font = find_font(62)
-    body_font = find_font(36)
-    planet_font = find_font(26)
-    foot_font = find_font(28)
+    brand_font = find_font(50)
+    small_font = find_font(24)
+    title_font = find_font(46)
+    body_font = find_font(25)
+    panel_title_font = find_font(29)
+    sign_font = find_font(23)
+    zodiac_note_font = find_font(20)
+    planet_font = find_font(22)
+    foot_font = find_font(25)
 
     gold = (229, 199, 121)
     pale_gold = (246, 226, 162)
-    white = (247, 244, 232)
     muted = (189, 184, 205)
 
-    draw_centered(draw, 78, "HOSHIYOMI", brand_font, gold)
-    draw_centered(draw, 145, f"{SLOT_TITLES[slot]} / {sky['date']}", small_font, muted)
+    draw_centered(draw, 54, "HOSHIYOMI", brand_font, gold)
+    draw_centered(draw, 112, f"{SLOT_TITLES[slot]} / {sky['date']}", small_font, muted)
+    draw_centered(draw, 158, image_headline(sky, slot), title_font, pale_gold)
 
-    chart_center = (540, 585)
-    draw_star_chart(draw, chart_center, planet_positions(now), planet_font, foot_font)
+    chart_center = (540, 500)
+    draw_star_chart(draw, chart_center, planet_positions(now), planet_font, small_font, scale=0.72)
     draw_moon_disc(draw, chart_center, sky["moon_phase"])
 
-    y = 1000
-    draw_centered(draw, y, f"月は{sky['moon_sign']}、{sky['moon_phase']}", title_font, pale_gold)
-    y += 86
-    event = primary_event_sentence(sky) or ("見直しの星: " + " / ".join(sky["retrogrades"][:3]) if sky["retrogrades"] else "")
-    if event:
-        y = draw_wrapped(draw, (122, y), event, body_font, gold, 836, 14)
-        y += 16
+    draw_centered(draw, 782, f"月は{sky['moon_sign']}、{sky['moon_phase']}", find_font(38), pale_gold)
+    draw_centered(draw, 832, IMAGE_MESSAGES[slot].splitlines()[0], body_font, muted)
+    y = draw_reading_panel(draw, 860, sky, slot, panel_title_font, body_font)
+    draw_zodiac_digest(draw, y + 12, sky, slot, panel_title_font, sign_font, zodiac_note_font)
 
-    message = IMAGE_MESSAGES[slot]
-    draw_wrapped(draw, (122, y), message, body_font, white, 836, 14)
-
-    draw_centered(draw, 1260, "hoshiyomi4u.com", foot_font, gold)
+    draw_centered(draw, 1314, "hoshiyomi4u.com", foot_font, gold)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     image.save(output_path, quality=92, optimize=True)
     return output_path
@@ -362,15 +592,19 @@ def generate_card(sky: dict[str, Any], slot: str, output_path: Path, now: dateti
 def fallback_caption(sky: dict[str, Any], slot: str) -> str:
     if slot in ("morning", "night"):
         return zodiac_caption(sky, slot)
-    return CAPTION_TEMPLATES[slot].format(event_line=primary_event_sentence(sky), **sky)
+    return CAPTION_TEMPLATES[slot].format(
+        event_line=primary_event_sentence(sky),
+        theme=moon_theme(sky),
+        **sky,
+    )
 
 
 def instagram_prompt(sky: dict[str, Any], slot: str) -> str:
     if slot in ("morning", "night"):
         mode_detail = (
-            "朝の投稿なので、今日の星の動きから12星座別の運気と今日やるといいことを全星座分書く。"
+            "朝の投稿なので、今日の星の動きから12星座別の運気と今日やるといいことを全星座分書く。各星座の行は、運気名と具体的な行動を必ず変える。"
             if slot == "morning"
-            else "夜の投稿なので、今日の星の振り返りと、できなかった時の受け止め方を12星座分書く。"
+            else "夜の投稿なので、今日の星の振り返りと、できなかった時の受け止め方を12星座分書く。各星座の行は、振り返りの視点と明日への持ち越し方を必ず変える。"
         )
         return f"""Instagramに投稿するHOSHIYOMIの星読みキャプションを1つだけ書いてください。
 
@@ -380,13 +614,20 @@ def instagram_prompt(sky: dict[str, Any], slot: str) -> str:
 投稿の種類:
 {CAPTION_BRIEF[slot]}
 
+今日の文体指定:
+{style_profile(sky, slot)}
+
 制約:
-- 1800字以内
+- 2200字以内
+- 冒頭に「今日の星の読み筋」を2〜3文で書く
 - {mode_detail}
 - 12星座別は太陽星座を目安にした表現にする
+- 似た語尾、似た助言、同じ単語の連続を避ける
+- 「整える」「見直す」「大丈夫」「明日」を全星座で繰り返しすぎない
 - 「絶対」「必ず当たる」など断定・効果保証は禁止
 - 不安を煽らない
 - 新月・満月・星座移動・逆行開始/終了がある日は冒頭で優先
+- 最後に「出生図から読むならプロフィールへ」と自然に入れる
 - 最後に #星読み #占星術 #HOSHIYOMI を入れる
 - キャプション本文のみを出力"""
 
@@ -398,8 +639,13 @@ def instagram_prompt(sky: dict[str, Any], slot: str) -> str:
 投稿の種類:
 {CAPTION_BRIEF[slot]}
 
+今日の文体指定:
+{style_profile(sky, slot)}
+
 制約:
-- 160字以内
+- 260字以内
+- 今日の月星座、月相、重要イベントのうち最低2つを自然に入れる
+- 抽象的な一言だけで終わらせず、読者が試せる視点を1つ入れる
 - 「絶対」「必ず当たる」など断定・効果保証は禁止
 - 不安を煽らない
 - 新月・満月・星座移動・逆行開始/終了がある日はそれを優先
@@ -430,7 +676,7 @@ def generate_caption(sky: dict[str, Any], slot: str) -> str:
             },
             json={
                 "model": ANTHROPIC_MODEL,
-                "max_tokens": 500,
+                "max_tokens": 1200 if slot in ("morning", "night") else 500,
                 "messages": [{"role": "user", "content": instagram_prompt(sky, slot)}],
             },
             timeout=60,

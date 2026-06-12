@@ -15,7 +15,7 @@ from generate_and_post import (
     sign_of,
     slot_for,
 )
-from instagram_post import zodiac_caption
+from instagram_post import CARD_SIZE, generate_card, zodiac_caption
 from instagram_story import STORY_SIZE, generate_story, story_body
 
 
@@ -110,8 +110,27 @@ class AstrologyHelperTests(unittest.TestCase):
         for sign in ("牡羊座", "牡牛座", "双子座", "蟹座", "獅子座", "乙女座", "天秤座", "蠍座", "射手座", "山羊座", "水瓶座", "魚座"):
             self.assertIn(sign, morning)
             self.assertIn(sign, night)
+        self.assertIn("今日の読み筋", morning)
+        self.assertIn("今夜の読み筋", night)
         self.assertIn("今日やるといいこと", morning)
         self.assertIn("振り返り", night)
+
+    def test_instagram_feed_card_image_size(self):
+        sky = {
+            "date": "2026年06月12日",
+            "weekday": "金曜日",
+            "moon_sign": "牡牛座",
+            "moon_phase": "新月前の月",
+            "events": [],
+            "retrogrades": ["冥王星(水瓶座)"],
+        }
+        output = pathlib.Path("/tmp/hoshiyomi-feed-card-test.jpg")
+        path = generate_card(sky, "morning", output, datetime(2026, 6, 12, 8, 0, tzinfo=JST))
+
+        from PIL import Image
+
+        with Image.open(path) as image:
+            self.assertEqual(image.size, CARD_SIZE)
 
     def test_instagram_story_image_size_and_body(self):
         sky = {
