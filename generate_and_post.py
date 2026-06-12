@@ -87,6 +87,21 @@ RELATION_GUIDANCE = {
     11: ("休息運", "無理に答えを出さず深呼吸を"),
 }
 
+REFLECTION_GUIDANCE = {
+    0: ("自分の本音が見えた日", "迷ったなら、最初に浮かんだ気持ちを否定しないで"),
+    1: ("無理の量に気づく日", "進まなくても、余白を作れたなら十分"),
+    2: ("言葉の温度を見直す日", "返せなかった連絡は、明日短く整えれば大丈夫"),
+    3: ("居場所を整える日", "片づかなくても、安心できる場所を一つ思い出して"),
+    4: ("好きなものに救われる日", "楽しめなかったなら、疲れを先に認めて"),
+    5: ("抱えすぎに気づく日", "完璧にできなくても、減らしたい役目が見えたなら前進"),
+    6: ("人との距離を測る日", "合わせすぎたなら、今夜は自分の気持ちへ戻って"),
+    7: ("心の奥をのぞく日", "重く感じたなら、答えより感情の名前を置いて"),
+    8: ("次の可能性を見る日", "動けなかったなら、行きたい方向だけ残して"),
+    9: ("現実的な判断をする日", "成果が薄くても、優先順位が見えたなら十分"),
+    10: ("誰かとのつながりを感じる日", "頼れなかったなら、明日ひとことだけ声をかけて"),
+    11: ("静かに回復する日", "何もできなくても、心を責めない夜にして"),
+}
+
 PLANETS = {
     swe.SUN: "太陽",
     swe.MOON: "月",
@@ -277,6 +292,12 @@ def sign_guidance_line(sign: str, moon_sign: str) -> str:
     return f"{sign}: {tone}。{action}。"
 
 
+def sign_reflection_line(sign: str, moon_sign: str) -> str:
+    diff = (SIGN_INDEX[sign] - SIGN_INDEX[moon_sign]) % 12
+    tone, reflection = REFLECTION_GUIDANCE[diff]
+    return f"{sign}: {tone}。{reflection}。"
+
+
 def trim_tweet(text: str) -> str:
     lines = [" ".join(line.strip().split()) for line in text.strip().splitlines() if line.strip()]
     text = "\n".join(lines)
@@ -306,6 +327,19 @@ def build_morning_thread(sky: dict[str, Any]) -> list[str]:
     posts = [append_link_to_tweet(overview)]
     for group in SIGN_GROUPS:
         lines = [sign_guidance_line(sign, sky["moon_sign"]) for sign in group]
+        posts.append(trim_tweet("\n".join(lines)))
+    return posts
+
+
+def build_night_thread(sky: dict[str, Any]) -> list[str]:
+    focus = sky_focus_sentence(sky)
+    overview = (
+        f"{sky['date']}({sky['weekday']})の星の振り返り。月は{sky['moon_sign']}、{sky['moon_phase']}。"
+        f"{focus}できたことも、できなかったことも、明日の選び方につながります。#星読み"
+    )
+    posts = [trim_tweet(overview)]
+    for group in SIGN_GROUPS:
+        lines = [sign_reflection_line(sign, sky["moon_sign"]) for sign in group]
         posts.append(trim_tweet("\n".join(lines)))
     return posts
 
@@ -382,6 +416,30 @@ def morning_thread_prompt(sky: dict[str, Any]) -> str:
 - 天体イベント(新月・満月・星座移動・逆行)がある日は1件目で最優先に扱う"""
 
 
+def night_thread_prompt(sky: dict[str, Any]) -> str:
+    return f"""あなたは占星術サービス「HOSHIYOMI」の公式Xアカウントの夜22時投稿スレッドを作成します。
+
+今日の星のデータ:
+{json.dumps(sky, ensure_ascii=False, indent=2)}
+
+作るもの:
+- Xのスレッド投稿を5件
+- 1件目: 今日の星の動きの振り返り。月星座、月相、重要イベント、今日をどう受け止めるかを入れる。#星読み を1つ入れる
+- 2件目: 牡羊座・牡牛座・双子座の「今日の振り返り」と「できなかった時の受け止め方」
+- 3件目: 蟹座・獅子座・乙女座の「今日の振り返り」と「できなかった時の受け止め方」
+- 4件目: 天秤座・蠍座・射手座の「今日の振り返り」と「できなかった時の受け止め方」
+- 5件目: 山羊座・水瓶座・魚座の「今日の振り返り」と「できなかった時の受け止め方」
+
+制約:
+- JSON配列だけを出力する。説明、前置き、Markdownは禁止
+- 配列の要素は文字列5件だけ
+- 各投稿は280字以内
+- 12星座別は太陽星座を目安にした表現にする
+- 「絶対」「必ず当たる」などの断定・効果保証表現は禁止
+- 不安を煽らない。できなかった人を責めず、明日に向けて静かに整える言葉にする
+- 天体イベント(新月・満月・星座移動・逆行)がある日は1件目で最優先に扱う"""
+
+
 def extract_claude_posts(payload: dict[str, Any]) -> list[str]:
     text = extract_claude_text(payload)
     text = text.replace("```json", "").replace("```", "").strip()
@@ -398,11 +456,11 @@ def extract_claude_posts(payload: dict[str, Any]) -> list[str]:
     return [str(item).strip() for item in parsed if str(item).strip()]
 
 
-def normalize_morning_thread(posts: list[str]) -> list[str]:
+def normalize_thread(posts: list[str], include_link: bool = False) -> list[str]:
     if len(posts) != 5:
         return []
     normalized = [trim_tweet(post) for post in posts]
-    if SITE_URL not in "\n".join(normalized):
+    if include_link and SITE_URL not in "\n".join(normalized):
         normalized[0] = append_link_to_tweet(normalized[0])
     return normalized
 
@@ -428,11 +486,39 @@ def generate_morning_thread(sky: dict[str, Any]) -> list[str]:
             timeout=60,
         )
         response.raise_for_status()
-        posts = normalize_morning_thread(extract_claude_posts(response.json()))
+        posts = normalize_thread(extract_claude_posts(response.json()), include_link=True)
         return posts or build_morning_thread(sky)
     except requests.RequestException as exc:
         print(f"[warn] Anthropic API failed; using zodiac template thread: {exc}", file=sys.stderr)
         return build_morning_thread(sky)
+
+
+def generate_night_thread(sky: dict[str, Any]) -> list[str]:
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return build_night_thread(sky)
+
+    try:
+        response = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": api_key,
+                "anthropic-version": ANTHROPIC_VERSION,
+                "content-type": "application/json",
+            },
+            json={
+                "model": ANTHROPIC_MODEL,
+                "max_tokens": 1200,
+                "messages": [{"role": "user", "content": night_thread_prompt(sky)}],
+            },
+            timeout=60,
+        )
+        response.raise_for_status()
+        posts = normalize_thread(extract_claude_posts(response.json()))
+        return posts or build_night_thread(sky)
+    except requests.RequestException as exc:
+        print(f"[warn] Anthropic API failed; using zodiac reflection thread: {exc}", file=sys.stderr)
+        return build_night_thread(sky)
 
 
 def generate_text(sky: dict[str, Any], slot: str) -> str:
@@ -466,6 +552,8 @@ def generate_text(sky: dict[str, Any], slot: str) -> str:
 def generate_post_texts(sky: dict[str, Any], slot: str) -> list[str]:
     if slot == "morning":
         return generate_morning_thread(sky)
+    if slot == "night":
+        return generate_night_thread(sky)
     return [generate_text(sky, slot)]
 
 

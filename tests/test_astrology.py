@@ -5,7 +5,16 @@ from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
-from generate_and_post import JST, MAX_TWEET_CHARS, SITE_URL, build_morning_thread, crosses, sign_of, slot_for
+from generate_and_post import (
+    JST,
+    MAX_TWEET_CHARS,
+    SITE_URL,
+    build_morning_thread,
+    build_night_thread,
+    crosses,
+    sign_of,
+    slot_for,
+)
 
 
 class AstrologyHelperTests(unittest.TestCase):
@@ -49,6 +58,23 @@ class AstrologyHelperTests(unittest.TestCase):
 
         self.assertEqual(len(posts), 5)
         self.assertIn(SITE_URL, posts[0])
+        self.assertIn("牡羊座", posts[1])
+        self.assertIn("魚座", posts[4])
+        self.assertTrue(all(len(post) <= MAX_TWEET_CHARS for post in posts))
+
+    def test_build_night_thread_contains_zodiac_reflection(self):
+        sky = {
+            "date": "2026年06月12日",
+            "weekday": "金曜日",
+            "moon_sign": "牡牛座",
+            "moon_phase": "新月前の月",
+            "events": [],
+            "retrogrades": ["冥王星(水瓶座)"],
+        }
+        posts = build_night_thread(sky)
+
+        self.assertEqual(len(posts), 5)
+        self.assertIn("振り返り", posts[0])
         self.assertIn("牡羊座", posts[1])
         self.assertIn("魚座", posts[4])
         self.assertTrue(all(len(post) <= MAX_TWEET_CHARS for post in posts))
