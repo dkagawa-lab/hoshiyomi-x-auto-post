@@ -46,8 +46,17 @@ jobs:
           SITE_URL: https://hoshiyomi4u.com/m
           DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
         run: |
-          if [ -n "${{ github.event.inputs.slot }}" ]; then
-            python instagram_story.py "${{ github.event.inputs.slot }}"
+          SLOT="${{ github.event.inputs.slot }}"
+          if [ -z "$SLOT" ]; then
+            case "${{ github.event.schedule }}" in
+              "10 23 * * *") SLOT="morning" ;;
+              "40 3 * * *") SLOT="noon" ;;
+              "10 13 * * *") SLOT="night" ;;
+            esac
+          fi
+
+          if [ -n "$SLOT" ]; then
+            python instagram_story.py "$SLOT"
           else
             python instagram_story.py
           fi

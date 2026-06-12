@@ -12,6 +12,9 @@ on:
       dry_run:
         description: "1 means generate text only without posting"
         default: "1"
+      slot:
+        description: "Optional: midnight / morning / noon / night"
+        default: ""
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -38,4 +41,19 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           SITE_URL: https://hoshiyomi4u.com/m
           DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
-        run: python generate_and_post.py
+        run: |
+          SLOT="${{ github.event.inputs.slot }}"
+          if [ -z "$SLOT" ]; then
+            case "${{ github.event.schedule }}" in
+              "0 15 * * *") SLOT="midnight" ;;
+              "0 23 * * *") SLOT="morning" ;;
+              "30 3 * * *") SLOT="noon" ;;
+              "0 13 * * *") SLOT="night" ;;
+            esac
+          fi
+
+          if [ -n "$SLOT" ]; then
+            python generate_and_post.py "$SLOT"
+          else
+            python generate_and_post.py
+          fi
