@@ -16,6 +16,7 @@ from generate_and_post import (
     slot_for,
 )
 from instagram_post import zodiac_caption
+from instagram_story import STORY_SIZE, generate_story, story_body
 
 
 class AstrologyHelperTests(unittest.TestCase):
@@ -97,6 +98,24 @@ class AstrologyHelperTests(unittest.TestCase):
             self.assertIn(sign, night)
         self.assertIn("今日やるといいこと", morning)
         self.assertIn("振り返り", night)
+
+    def test_instagram_story_image_size_and_body(self):
+        sky = {
+            "date": "2026年06月12日",
+            "weekday": "金曜日",
+            "moon_sign": "牡牛座",
+            "moon_phase": "新月前の月",
+            "events": [],
+            "retrogrades": ["冥王星(水瓶座)"],
+        }
+        output = pathlib.Path("/tmp/hoshiyomi-story-test.jpg")
+        path = generate_story(sky, "morning", output)
+
+        from PIL import Image
+
+        with Image.open(path) as image:
+            self.assertEqual(image.size, STORY_SIZE)
+        self.assertIn("12星座別", story_body(sky, "morning"))
 
 
 if __name__ == "__main__":
