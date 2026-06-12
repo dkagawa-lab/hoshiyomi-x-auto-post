@@ -2,11 +2,11 @@ name: HOSHIYOMI Instagram auto post
 
 on:
   schedule:
-    # UTC. Runs at 00:05 / 07:35 / 12:35 / 21:05 JST.
+    # UTC. Runs at 00:05 / 08:05 / 12:35 / 22:05 JST.
     - cron: "5 15 * * *"
-    - cron: "35 22 * * *"
+    - cron: "5 23 * * *"
     - cron: "35 3 * * *"
-    - cron: "5 12 * * *"
+    - cron: "5 13 * * *"
   workflow_dispatch:
     inputs:
       dry_run:

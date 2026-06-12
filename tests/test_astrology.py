@@ -15,6 +15,7 @@ from generate_and_post import (
     sign_of,
     slot_for,
 )
+from instagram_post import zodiac_caption
 
 
 class AstrologyHelperTests(unittest.TestCase):
@@ -78,6 +79,24 @@ class AstrologyHelperTests(unittest.TestCase):
         self.assertIn("牡羊座", posts[1])
         self.assertIn("魚座", posts[4])
         self.assertTrue(all(len(post) <= MAX_TWEET_CHARS for post in posts))
+
+    def test_instagram_zodiac_captions_include_all_signs(self):
+        sky = {
+            "date": "2026年06月12日",
+            "weekday": "金曜日",
+            "moon_sign": "牡牛座",
+            "moon_phase": "新月前の月",
+            "events": [],
+            "retrogrades": ["冥王星(水瓶座)"],
+        }
+        morning = zodiac_caption(sky, "morning")
+        night = zodiac_caption(sky, "night")
+
+        for sign in ("牡羊座", "牡牛座", "双子座", "蟹座", "獅子座", "乙女座", "天秤座", "蠍座", "射手座", "山羊座", "水瓶座", "魚座"):
+            self.assertIn(sign, morning)
+            self.assertIn(sign, night)
+        self.assertIn("今日やるといいこと", morning)
+        self.assertIn("振り返り", night)
 
 
 if __name__ == "__main__":

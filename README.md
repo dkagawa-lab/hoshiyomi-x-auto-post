@@ -51,7 +51,7 @@ GitHubのリポジトリで `Settings` → `Secrets and variables` → `Actions`
 
 ### Instagram用
 
-Instagramはテキストだけでは投稿できないため、`instagram_post.py` が1080×1350の画像カードを生成し、Supabase Storageへアップロードした公開URLをInstagram Graph APIへ渡します。
+Instagramはテキストだけでは投稿できないため、`instagram_post.py` が1080×1350の画像カードを生成し、Supabase Storageへアップロードした公開URLをInstagram Graph APIへ渡します。画像は当日の太陽〜冥王星の位置を円環に置いた「今日の星図」風カードです。
 
 | Secret名 | 用途 | 必須 |
 |---|---|---|
@@ -97,6 +97,8 @@ DRY_RUN=1 python generate_and_post.py night
 APIキーが一切ない環境でも、`DRY_RUN=1` ならテンプレートモードで文面を出力できます。
 
 `morning` と `night` は5投稿のスレッドとして出力します。`morning` は1件目が今日の星の概要、2〜5件目が3星座ずつの運気とやるべきことです。`night` は1件目が今日の星の振り返り、2〜5件目が3星座ずつの振り返りと、できなかった時の受け止め方です。
+
+Instagramの `morning` と `night` は1枚画像+長めのキャプションで、12星座すべての運気/振り返りを掲載します。投稿時刻はXの少し後になるよう、08:05 / 22:05 JSTにしています。
 
 Instagram用の画像生成テスト:
 
