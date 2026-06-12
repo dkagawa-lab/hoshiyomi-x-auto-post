@@ -22,6 +22,7 @@ SITE_URL = os.environ.get("SITE_URL", "https://hoshiyomi4u.com/m")
 ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
 ANTHROPIC_VERSION = "2023-06-01"
 VALID_SLOTS = ("midnight", "morning", "noon", "night")
+MAX_TWEET_CHARS = 280
 
 SIGNS = [
     "牡羊座",
@@ -39,6 +40,52 @@ SIGNS = [
 ]
 
 WEEKDAYS = ["月", "火", "水", "木", "金", "土", "日"]
+
+SIGN_INDEX = {sign: index for index, sign in enumerate(SIGNS)}
+
+SIGN_GROUPS = [
+    ["牡羊座", "牡牛座", "双子座"],
+    ["蟹座", "獅子座", "乙女座"],
+    ["天秤座", "蠍座", "射手座"],
+    ["山羊座", "水瓶座", "魚座"],
+]
+
+SIGN_ELEMENTS = {
+    "牡羊座": "火",
+    "獅子座": "火",
+    "射手座": "火",
+    "牡牛座": "地",
+    "乙女座": "地",
+    "山羊座": "地",
+    "双子座": "風",
+    "天秤座": "風",
+    "水瓶座": "風",
+    "蟹座": "水",
+    "蠍座": "水",
+    "魚座": "水",
+}
+
+MOON_THEMES = {
+    "火": "熱量を小さく動かす",
+    "地": "体と現実を整える",
+    "風": "言葉と情報を整理する",
+    "水": "心の本音に寄り添う",
+}
+
+RELATION_GUIDANCE = {
+    0: ("主役運", "自分の感覚を最優先に"),
+    1: ("準備運", "予定を詰めず余白を作る"),
+    2: ("対話運", "短い連絡を一つ返す"),
+    3: ("整え運", "家や仕事場を一か所整える"),
+    4: ("追い風運", "好きなことに少し時間を使う"),
+    5: ("調整運", "抱えすぎた役目を一つ軽くする"),
+    6: ("対人運", "相手の言葉を最後まで聞く"),
+    7: ("深掘り運", "本音を紙に書き出す"),
+    8: ("展開運", "いつもと違う選択を一つ試す"),
+    9: ("仕事運", "先に結論を決めて動く"),
+    10: ("仲間運", "相談できる人に声をかける"),
+    11: ("休息運", "無理に答えを出さず深呼吸を"),
+}
 
 PLANETS = {
     swe.SUN: "太陽",
@@ -185,16 +232,16 @@ def slot_for(now: datetime | None = None) -> str:
 
 SLOT_BRIEF = {
     "midnight": "日付が変わった直後の投稿。今日の星の入口として、日付・月星座・月相・あれば天体イベントを静かに告げる。",
-    "morning": "朝の投稿。今日の月星座と過ごし方のヒントを、やさしく短く伝える。",
+    "morning": "朝8時の投稿。今日の星の動きから、12星座別の運気とやるべきことをスレッドで伝える。",
     "noon": "昼の投稿。占星術の豆知識を、初心者にも分かる言葉で伝える。",
-    "night": "夜の投稿。今日の星をふり返り、明日への小さな指針を静かに伝える。",
+    "night": "夜22時の投稿。今日の星をふり返り、できた人にもできなかった人にも明日へつながる言葉を伝える。",
 }
 
 TEMPLATES = {
     "midnight": "日が変わりました。{date}({weekday})の月は{moon_sign}、{moon_phase}。{event_line}今日の星の流れを、静かに受け取って。 #星読み",
     "morning": "{date}({weekday})の月は{moon_sign}。{moon_phase}の流れです。{event_line}今日は気持ちの反応を急がず、自分のペースを整えて。 #星読み",
     "noon": "月は約2.5日ごとに星座を移ります。いまは{moon_sign}。同じ日でも、生まれた時刻と場所で星の地図は変わります。 #占星術",
-    "night": "今日もおつかれさまでした。{moon_phase}の夜。{event_line}明日の星は少しだけ違う顔を見せます。心をゆるめて休んで。 #星読み",
+    "night": "{date}({weekday})の星の振り返り。月は{moon_sign}、{moon_phase}。{event_line}思うように動けなかった人も、気づけたことを一つ残せば十分です。明日はまた違う流れへ。 #星読み",
 }
 
 
@@ -202,6 +249,65 @@ def primary_event_sentence(sky: dict[str, Any]) -> str:
     if not sky["events"]:
         return ""
     return f"{sky['events'][0]}。"
+
+
+def retrograde_sentence(sky: dict[str, Any]) -> str:
+    retrogrades = sky.get("retrogrades", [])
+    if not retrogrades:
+        return ""
+    names = "、".join(retrogrades[:3])
+    suffix = "ほか" if len(retrogrades) > 3 else ""
+    return f"{names}{suffix}が逆行中。見直しに向く流れ。"
+
+
+def sky_focus_sentence(sky: dict[str, Any]) -> str:
+    if sky.get("events"):
+        return primary_event_sentence(sky)
+    return retrograde_sentence(sky)
+
+
+def moon_theme(sky: dict[str, Any]) -> str:
+    element = SIGN_ELEMENTS.get(sky["moon_sign"], "地")
+    return MOON_THEMES[element]
+
+
+def sign_guidance_line(sign: str, moon_sign: str) -> str:
+    diff = (SIGN_INDEX[sign] - SIGN_INDEX[moon_sign]) % 12
+    tone, action = RELATION_GUIDANCE[diff]
+    return f"{sign}: {tone}。{action}。"
+
+
+def trim_tweet(text: str) -> str:
+    lines = [" ".join(line.strip().split()) for line in text.strip().splitlines() if line.strip()]
+    text = "\n".join(lines)
+    if len(text) <= MAX_TWEET_CHARS:
+        return text
+    return f"{text[: MAX_TWEET_CHARS - 1].rstrip()}…"
+
+
+def append_link_to_tweet(text: str) -> str:
+    text = trim_tweet(text)
+    if SITE_URL in text:
+        return text
+    candidate = f"{text.rstrip()}\n{SITE_URL}"
+    if len(candidate) <= MAX_TWEET_CHARS:
+        return candidate
+    available = MAX_TWEET_CHARS - len(SITE_URL) - 2
+    return f"{text[:available].rstrip()}…\n{SITE_URL}"
+
+
+def build_morning_thread(sky: dict[str, Any]) -> list[str]:
+    focus = sky_focus_sentence(sky)
+    theme = moon_theme(sky)
+    overview = (
+        f"{sky['date']}({sky['weekday']})の星。月は{sky['moon_sign']}、{sky['moon_phase']}。"
+        f"{focus}今日は「{theme}」が鍵。12星座別は太陽星座を目安に。#星読み"
+    )
+    posts = [append_link_to_tweet(overview)]
+    for group in SIGN_GROUPS:
+        lines = [sign_guidance_line(sign, sky["moon_sign"]) for sign in group]
+        posts.append(trim_tweet("\n".join(lines)))
+    return posts
 
 
 def should_include_link(slot: str, sky: dict[str, Any]) -> bool:
@@ -252,6 +358,83 @@ def extract_claude_text(payload: dict[str, Any]) -> str:
     return "".join(parts).strip().strip("\"'「」")
 
 
+def morning_thread_prompt(sky: dict[str, Any]) -> str:
+    return f"""あなたは占星術サービス「HOSHIYOMI」の公式Xアカウントの朝8時投稿スレッドを作成します。
+
+今日の星のデータ:
+{json.dumps(sky, ensure_ascii=False, indent=2)}
+
+作るもの:
+- Xのスレッド投稿を5件
+- 1件目: 今日の星の動きの概要。月星座、月相、重要イベント、今日の鍵を入れる。最後に #星読み と {SITE_URL} を入れる
+- 2件目: 牡羊座・牡牛座・双子座の「運気」と「やること」
+- 3件目: 蟹座・獅子座・乙女座の「運気」と「やること」
+- 4件目: 天秤座・蠍座・射手座の「運気」と「やること」
+- 5件目: 山羊座・水瓶座・魚座の「運気」と「やること」
+
+制約:
+- JSON配列だけを出力する。説明、前置き、Markdownは禁止
+- 配列の要素は文字列5件だけ
+- 各投稿は280字以内
+- 12星座別は太陽星座を目安にした表現にする
+- 「絶対」「必ず当たる」などの断定・効果保証表現は禁止
+- 不安を煽らない。逆行は「見直しに向く時期」のような前向きな整理にする
+- 天体イベント(新月・満月・星座移動・逆行)がある日は1件目で最優先に扱う"""
+
+
+def extract_claude_posts(payload: dict[str, Any]) -> list[str]:
+    text = extract_claude_text(payload)
+    text = text.replace("```json", "").replace("```", "").strip()
+    start = text.find("[")
+    end = text.rfind("]")
+    if start == -1 or end == -1 or end <= start:
+        return []
+    try:
+        parsed = json.loads(text[start : end + 1])
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(parsed, list):
+        return []
+    return [str(item).strip() for item in parsed if str(item).strip()]
+
+
+def normalize_morning_thread(posts: list[str]) -> list[str]:
+    if len(posts) != 5:
+        return []
+    normalized = [trim_tweet(post) for post in posts]
+    if SITE_URL not in "\n".join(normalized):
+        normalized[0] = append_link_to_tweet(normalized[0])
+    return normalized
+
+
+def generate_morning_thread(sky: dict[str, Any]) -> list[str]:
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return build_morning_thread(sky)
+
+    try:
+        response = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": api_key,
+                "anthropic-version": ANTHROPIC_VERSION,
+                "content-type": "application/json",
+            },
+            json={
+                "model": ANTHROPIC_MODEL,
+                "max_tokens": 1200,
+                "messages": [{"role": "user", "content": morning_thread_prompt(sky)}],
+            },
+            timeout=60,
+        )
+        response.raise_for_status()
+        posts = normalize_morning_thread(extract_claude_posts(response.json()))
+        return posts or build_morning_thread(sky)
+    except requests.RequestException as exc:
+        print(f"[warn] Anthropic API failed; using zodiac template thread: {exc}", file=sys.stderr)
+        return build_morning_thread(sky)
+
+
 def generate_text(sky: dict[str, Any], slot: str) -> str:
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
@@ -280,7 +463,13 @@ def generate_text(sky: dict[str, Any], slot: str) -> str:
         return fallback_text(sky, slot)
 
 
-def post_to_x(text: str) -> dict[str, Any]:
+def generate_post_texts(sky: dict[str, Any], slot: str) -> list[str]:
+    if slot == "morning":
+        return generate_morning_thread(sky)
+    return [generate_text(sky, slot)]
+
+
+def post_to_x(text: str, reply_to_tweet_id: str | None = None) -> dict[str, Any]:
     required_envs = ["X_API_KEY", "X_API_SECRET", "X_ACCESS_TOKEN", "X_ACCESS_SECRET"]
     missing = [name for name in required_envs if not os.environ.get(name)]
     if missing:
@@ -292,10 +481,14 @@ def post_to_x(text: str) -> dict[str, Any]:
         os.environ["X_ACCESS_TOKEN"],
         os.environ["X_ACCESS_SECRET"],
     )
+    payload: dict[str, Any] = {"text": text}
+    if reply_to_tweet_id:
+        payload["reply"] = {"in_reply_to_tweet_id": reply_to_tweet_id}
+
     response = requests.post(
         "https://api.twitter.com/2/tweets",
         auth=auth,
-        json={"text": text},
+        json=payload,
         timeout=30,
     )
     if response.status_code == 401:
@@ -331,15 +524,24 @@ def main(argv: list[str] | None = None) -> None:
     sky = todays_sky(now)
     print(f"[sky] {json.dumps(sky, ensure_ascii=False)}")
 
-    text = generate_text(sky, slot)
-    print(f"[post:{slot}]\n{text}\n")
+    texts = generate_post_texts(sky, slot)
+    for index, text in enumerate(texts, start=1):
+        print(f"[post:{slot}:{index}/{len(texts)}]\n{text}\n")
 
     if os.environ.get("DRY_RUN") == "1":
         print("[dry-run] skipped posting to X")
         return
 
-    result = post_to_x(text)
-    print(f"[posted] {json.dumps(result, ensure_ascii=False)}")
+    results: list[dict[str, Any]] = []
+    reply_to_tweet_id: str | None = None
+    for text in texts:
+        result = post_to_x(text, reply_to_tweet_id)
+        results.append(result)
+        reply_to_tweet_id = result.get("data", {}).get("id")
+        if len(texts) > 1 and not reply_to_tweet_id:
+            raise RuntimeError(f"X API response did not include tweet id: {json.dumps(result, ensure_ascii=False)}")
+
+    print(f"[posted] {json.dumps(results, ensure_ascii=False)}")
 
 
 if __name__ == "__main__":

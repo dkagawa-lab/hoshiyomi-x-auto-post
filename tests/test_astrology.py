@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
-from generate_and_post import JST, crosses, sign_of, slot_for
+from generate_and_post import JST, MAX_TWEET_CHARS, SITE_URL, build_morning_thread, crosses, sign_of, slot_for
 
 
 class AstrologyHelperTests(unittest.TestCase):
@@ -28,9 +28,30 @@ class AstrologyHelperTests(unittest.TestCase):
         self.assertEqual(slot_for(datetime(2026, 6, 10, 1, 59, tzinfo=JST)), "midnight")
         self.assertEqual(slot_for(datetime(2026, 6, 10, 2, 0, tzinfo=JST)), "morning")
 
+    def test_slot_for_morning_and_night_post_times(self):
+        self.assertEqual(slot_for(datetime(2026, 6, 10, 8, 0, tzinfo=JST)), "morning")
+        self.assertEqual(slot_for(datetime(2026, 6, 10, 22, 0, tzinfo=JST)), "night")
+
     def test_slot_for_converts_to_jst(self):
         utc = timezone(timedelta(0))
         self.assertEqual(slot_for(datetime(2026, 6, 9, 15, 0, tzinfo=utc)), "midnight")
+
+    def test_build_morning_thread_contains_zodiac_guidance(self):
+        sky = {
+            "date": "2026年06月12日",
+            "weekday": "金曜日",
+            "moon_sign": "牡牛座",
+            "moon_phase": "欠けていく月",
+            "events": ["金星が牡牛座から双子座へ移動"],
+            "retrogrades": ["冥王星(水瓶座)"],
+        }
+        posts = build_morning_thread(sky)
+
+        self.assertEqual(len(posts), 5)
+        self.assertIn(SITE_URL, posts[0])
+        self.assertIn("牡羊座", posts[1])
+        self.assertIn("魚座", posts[4])
+        self.assertTrue(all(len(post) <= MAX_TWEET_CHARS for post in posts))
 
 
 if __name__ == "__main__":
