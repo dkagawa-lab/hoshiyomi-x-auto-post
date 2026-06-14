@@ -2,11 +2,12 @@ name: HOSHIYOMI X auto post
 
 on:
   schedule:
-    # UTC. Runs at 00:00 / 08:00 / 12:30 / 22:00 JST.
-    - cron: "0 15 * * *"
-    - cron: "0 23 * * *"
-    - cron: "30 3 * * *"
-    - cron: "0 13 * * *"
+    # UTC. Runs at 00:17 / 08:17 / 12:47 / 22:17 JST.
+    # Avoid :00 because GitHub scheduled workflows are often delayed at the top of the hour.
+    - cron: "17 15 * * *"
+    - cron: "17 23 * * *"
+    - cron: "47 3 * * *"
+    - cron: "17 13 * * *"
   workflow_dispatch:
     inputs:
       dry_run:
@@ -45,10 +46,10 @@ jobs:
           SLOT="${{ github.event.inputs.slot }}"
           if [ -z "$SLOT" ]; then
             case "${{ github.event.schedule }}" in
-              "0 15 * * *") SLOT="midnight" ;;
-              "0 23 * * *") SLOT="morning" ;;
-              "30 3 * * *") SLOT="noon" ;;
-              "0 13 * * *") SLOT="night" ;;
+              "17 15 * * *") SLOT="midnight" ;;
+              "17 23 * * *") SLOT="morning" ;;
+              "47 3 * * *") SLOT="noon" ;;
+              "17 13 * * *") SLOT="night" ;;
             esac
           fi
 

@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -23,6 +24,8 @@ ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
 ANTHROPIC_VERSION = "2023-06-01"
 VALID_SLOTS = ("midnight", "morning", "noon", "night")
 MAX_TWEET_CHARS = 280
+X_POST_RETRIES = int(os.environ.get("X_POST_RETRIES", "3"))
+X_POST_RETRY_SECONDS = int(os.environ.get("X_POST_RETRY_SECONDS", "30"))
 
 SIGNS = [
     "牡羊座",
@@ -680,12 +683,35 @@ def post_to_x(text: str, reply_to_tweet_id: str | None = None) -> dict[str, Any]
     if reply_to_tweet_id:
         payload["reply"] = {"in_reply_to_tweet_id": reply_to_tweet_id}
 
-    response = requests.post(
-        "https://api.twitter.com/2/tweets",
-        auth=auth,
-        json=payload,
-        timeout=30,
-    )
+    response: requests.Response | None = None
+    for attempt in range(1, X_POST_RETRIES + 1):
+        response = requests.post(
+            "https://api.twitter.com/2/tweets",
+            auth=auth,
+            json=payload,
+            timeout=30,
+        )
+        retryable_cloudflare = response.status_code == 403 and (
+            "Just a moment" in response.text or "challenge-platform" in response.text
+        )
+        retryable_status = response.status_code in (429, 500, 502, 503, 504)
+        if not retryable_cloudflare and not retryable_status:
+            break
+        if attempt >= X_POST_RETRIES:
+            break
+
+        wait_seconds = X_POST_RETRY_SECONDS * attempt
+        reason = "Cloudflare challenge" if retryable_cloudflare else f"HTTP {response.status_code}"
+        print(
+            f"[warn] X API returned {reason}; retrying in {wait_seconds}s "
+            f"({attempt}/{X_POST_RETRIES})",
+            file=sys.stderr,
+        )
+        time.sleep(wait_seconds)
+
+    if response is None:
+        raise RuntimeError("X API request was not sent")
+
     if response.status_code == 401:
         raise RuntimeError(
             "X API returned 401 Unauthorized. Check that X_API_KEY, X_API_SECRET, "
@@ -694,6 +720,12 @@ def post_to_x(text: str, reply_to_tweet_id: str | None = None) -> dict[str, Any]
             f"to Read and write. Response: {response.text}"
         )
     if response.status_code == 403:
+        if "Just a moment" in response.text or "challenge-platform" in response.text:
+            raise RuntimeError(
+                "X API returned 403 Forbidden with a Cloudflare challenge after "
+                f"{X_POST_RETRIES} attempts. This is usually a temporary block on "
+                f"GitHub Actions runner traffic. Response: {response.text[:800]}"
+            )
         raise RuntimeError(
             "X API returned 403 Forbidden. The app may still be Read only, or the "
             f"account/app may not have permission to create posts. Response: {response.text}"
