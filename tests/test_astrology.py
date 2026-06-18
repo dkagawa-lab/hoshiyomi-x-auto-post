@@ -3,6 +3,8 @@ import sys
 import unittest
 from datetime import datetime, timedelta, timezone
 
+import requests
+
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
 from generate_and_post import (
@@ -12,6 +14,7 @@ from generate_and_post import (
     build_morning_thread,
     build_night_thread,
     crosses,
+    is_duplicate_tweet_response,
     sign_of,
     slot_for,
 )
@@ -20,6 +23,12 @@ from instagram_story import STORY_SIZE, generate_story, story_body
 
 
 class AstrologyHelperTests(unittest.TestCase):
+    def make_response(self, status_code: int, body: str) -> requests.Response:
+        response = requests.Response()
+        response.status_code = status_code
+        response._content = body.encode("utf-8")
+        return response
+
     def test_sign_of_longitude_boundaries(self):
         self.assertEqual(sign_of(0), "牡羊座")
         self.assertEqual(sign_of(29.999), "牡羊座")
@@ -46,6 +55,17 @@ class AstrologyHelperTests(unittest.TestCase):
     def test_slot_for_converts_to_jst(self):
         utc = timezone(timedelta(0))
         self.assertEqual(slot_for(datetime(2026, 6, 9, 15, 0, tzinfo=utc)), "midnight")
+
+    def test_duplicate_tweet_response_detection(self):
+        response = self.make_response(
+            403,
+            '{"detail":"You are not allowed to create a Tweet with duplicate content.","title":"Forbidden"}',
+        )
+        self.assertTrue(is_duplicate_tweet_response(response))
+
+    def test_duplicate_tweet_response_ignores_other_403(self):
+        response = self.make_response(403, '{"detail":"Your app is read only.","title":"Forbidden"}')
+        self.assertFalse(is_duplicate_tweet_response(response))
 
     def test_build_morning_thread_contains_zodiac_guidance(self):
         sky = {

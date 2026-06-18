@@ -667,6 +667,19 @@ def generate_post_texts(sky: dict[str, Any], slot: str) -> list[str]:
     return [generate_text(sky, slot)]
 
 
+def is_duplicate_tweet_response(response: requests.Response) -> bool:
+    if response.status_code != 403:
+        return False
+    try:
+        payload = response.json()
+    except ValueError:
+        return "duplicate content" in response.text.lower()
+
+    detail = str(payload.get("detail", ""))
+    title = str(payload.get("title", ""))
+    return "duplicate content" in f"{detail} {title}".lower()
+
+
 def post_to_x(text: str, reply_to_tweet_id: str | None = None) -> dict[str, Any]:
     required_envs = ["X_API_KEY", "X_API_SECRET", "X_ACCESS_TOKEN", "X_ACCESS_SECRET"]
     missing = [name for name in required_envs if not os.environ.get(name)]
@@ -711,6 +724,14 @@ def post_to_x(text: str, reply_to_tweet_id: str | None = None) -> dict[str, Any]
 
     if response is None:
         raise RuntimeError("X API request was not sent")
+
+    if is_duplicate_tweet_response(response):
+        print(
+            "[warn] X API reported duplicate content; treating this tweet as "
+            "already posted and stopping the current run safely.",
+            file=sys.stderr,
+        )
+        return {"duplicate": True, "status_code": response.status_code, "response": response.text}
 
     if response.status_code == 401:
         raise RuntimeError(
@@ -764,6 +785,10 @@ def main(argv: list[str] | None = None) -> None:
     for text in texts:
         result = post_to_x(text, reply_to_tweet_id)
         results.append(result)
+        if result.get("duplicate"):
+            print("[duplicate] X already has this content; skipped remaining tweets to avoid duplicates.")
+            break
+
         reply_to_tweet_id = result.get("data", {}).get("id")
         if len(texts) > 1 and not reply_to_tweet_id:
             raise RuntimeError(f"X API response did not include tweet id: {json.dumps(result, ensure_ascii=False)}")
