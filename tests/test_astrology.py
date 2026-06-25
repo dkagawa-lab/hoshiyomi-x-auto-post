@@ -18,7 +18,7 @@ from generate_and_post import (
     sign_of,
     slot_for,
 )
-from instagram_post import CARD_SIZE, generate_card, zodiac_caption
+from instagram_post import CARD_SIZE, InstagramGraphAPIError, generate_card, is_instagram_media_download_error, zodiac_caption
 from instagram_story import STORY_SIZE, generate_story, story_body
 
 
@@ -151,6 +151,20 @@ class AstrologyHelperTests(unittest.TestCase):
 
         with Image.open(path) as image:
             self.assertEqual(image.size, CARD_SIZE)
+
+    def test_instagram_media_download_error_detection(self):
+        error = InstagramGraphAPIError(
+            "failed",
+            400,
+            {
+                "error": {
+                    "message": "Only photo or video can be accepted as media type.",
+                    "code": 9004,
+                    "error_subcode": 2207052,
+                }
+            },
+        )
+        self.assertTrue(is_instagram_media_download_error(error))
 
     def test_instagram_story_image_size_and_body(self):
         sky = {

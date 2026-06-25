@@ -47,6 +47,9 @@ from generate_and_post import (
 GRAPH_API_VERSION = os.environ.get("META_GRAPH_API_VERSION", "v23.0")
 CARD_SIZE = (1080, 1350)
 OUTPUT_DIR = Path("out")
+PUBLIC_IMAGE_CHECK_ATTEMPTS = int(os.environ.get("PUBLIC_IMAGE_CHECK_ATTEMPTS", "6"))
+PUBLIC_IMAGE_CHECK_SECONDS = int(os.environ.get("PUBLIC_IMAGE_CHECK_SECONDS", "5"))
+INSTAGRAM_CREATE_RETRIES = int(os.environ.get("INSTAGRAM_CREATE_RETRIES", "3"))
 
 FONT_CANDIDATES = [
     "/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc",
@@ -97,6 +100,14 @@ SLOT_TITLES = {
     "noon": "星読みメモ",
     "night": "夜の振り返り",
 }
+
+
+class InstagramGraphAPIError(RuntimeError):
+    def __init__(self, message: str, status_code: int, payload: dict[str, Any]):
+        super().__init__(message)
+        self.status_code = status_code
+        self.payload = payload
+
 
 SIGN_SHORT_LABELS = {
     "牡羊座": "牡羊",
@@ -719,6 +730,29 @@ def upload_to_supabase(image_path: Path, object_path: str) -> str:
     return f"{supabase_url}/storage/v1/object/public/{bucket}/{object_path}"
 
 
+def wait_for_public_image(image_url: str) -> None:
+    last_status = ""
+    for attempt in range(1, PUBLIC_IMAGE_CHECK_ATTEMPTS + 1):
+        try:
+            response = requests.get(image_url, timeout=20)
+            content_type = response.headers.get("content-type", "")
+            if response.ok and content_type.startswith("image/") and len(response.content) > 1024:
+                return
+            last_status = f"{response.status_code} {content_type} {len(response.content)} bytes"
+        except requests.RequestException as exc:
+            last_status = str(exc)
+
+        if attempt < PUBLIC_IMAGE_CHECK_ATTEMPTS:
+            wait_seconds = PUBLIC_IMAGE_CHECK_SECONDS * attempt
+            print(
+                f"[warn] Public image is not ready yet ({last_status}); "
+                f"retrying in {wait_seconds}s ({attempt}/{PUBLIC_IMAGE_CHECK_ATTEMPTS})"
+            )
+            time.sleep(wait_seconds)
+
+    raise RuntimeError(f"Public image URL was not readable before Instagram publish: {last_status}")
+
+
 def raise_graph_api_error(response: requests.Response) -> None:
     try:
         payload = response.json()
@@ -743,9 +777,11 @@ def raise_graph_api_error(response: requests.Response) -> None:
             f"pages_read_engagement permissions. Meta response: {message}"
         )
 
-    raise RuntimeError(
+    raise InstagramGraphAPIError(
         "Instagram Graph API failed: "
-        f"{response.status_code} {json.dumps(payload, ensure_ascii=False)}"
+        f"{response.status_code} {json.dumps(payload, ensure_ascii=False)}",
+        response.status_code,
+        payload,
     )
 
 
@@ -773,6 +809,18 @@ def verify_instagram_access() -> None:
     print(f"[instagram:account] {json.dumps(account, ensure_ascii=False)}")
 
 
+def is_instagram_media_download_error(exc: InstagramGraphAPIError) -> bool:
+    error = exc.payload.get("error", {}) if isinstance(exc.payload, dict) else {}
+    message = str(error.get("message", ""))
+    user_message = str(error.get("error_user_msg", ""))
+    return (
+        error.get("code") == 9004
+        or error.get("error_subcode") == 2207052
+        or "download" in message.lower()
+        or "メディアを取得できませんでした" in user_message
+    )
+
+
 def wait_for_container(container_id: str) -> None:
     for _ in range(8):
         status = graph_get(container_id, {"fields": "status_code,status"})
@@ -785,13 +833,33 @@ def wait_for_container(container_id: str) -> None:
 
 def publish_to_instagram(image_url: str, caption: str) -> dict[str, Any]:
     ig_account_id = required_env("INSTAGRAM_BUSINESS_ACCOUNT_ID")
-    create = graph_post(
-        f"{ig_account_id}/media",
-        {
-            "image_url": image_url,
-            "caption": caption,
-        },
-    )
+    wait_for_public_image(image_url)
+
+    create: dict[str, Any] | None = None
+    for attempt in range(1, INSTAGRAM_CREATE_RETRIES + 1):
+        try:
+            create = graph_post(
+                f"{ig_account_id}/media",
+                {
+                    "image_url": image_url,
+                    "caption": caption,
+                },
+            )
+            break
+        except InstagramGraphAPIError as exc:
+            if not is_instagram_media_download_error(exc) or attempt >= INSTAGRAM_CREATE_RETRIES:
+                raise
+
+            wait_seconds = PUBLIC_IMAGE_CHECK_SECONDS * attempt
+            print(
+                f"[warn] Instagram could not download the image yet; "
+                f"retrying media creation in {wait_seconds}s ({attempt}/{INSTAGRAM_CREATE_RETRIES})"
+            )
+            time.sleep(wait_seconds)
+
+    if create is None:
+        raise RuntimeError("Instagram media creation was not attempted")
+
     creation_id = create.get("id")
     if not creation_id:
         raise RuntimeError(f"Instagram media creation did not return an id: {create}")
