@@ -15,11 +15,14 @@ from generate_and_post import (
     build_morning_thread,
     build_night_thread,
     crosses,
+    find_font,
     generate_ranking_card,
     is_duplicate_tweet_response,
     should_skip_late_midnight,
     sign_of,
     slot_for,
+    text_width,
+    wrap_text,
     zodiac_ranking_items,
 )
 from instagram_post import CARD_SIZE, InstagramGraphAPIError, generate_card, is_instagram_media_download_error, zodiac_caption
@@ -175,6 +178,19 @@ class AstrologyHelperTests(unittest.TestCase):
         self.assertEqual(len(items), 12)
         self.assertEqual({item["sign"] for item in items}, set(("牡羊座", "牡牛座", "双子座", "蟹座", "獅子座", "乙女座", "天秤座", "蠍座", "射手座", "山羊座", "水瓶座", "魚座")))
         self.assertEqual([item["rank"] for item in items], list(range(1, 13)))
+
+    def test_ranking_text_wraps_without_ellipsis(self):
+        from PIL import Image, ImageDraw
+
+        image = Image.new("RGB", (360, 240))
+        draw = ImageDraw.Draw(image)
+        font = find_font(20)
+        lines = wrap_text(draw, "完璧にできなくても、減らしたい役目が見えたなら前進", font, 180)
+
+        self.assertGreater(len(lines), 1)
+        self.assertNotIn("…", "".join(lines))
+        self.assertEqual("".join(lines), "完璧にできなくても、減らしたい役目が見えたなら前進")
+        self.assertTrue(all(text_width(draw, line, font) <= 180 for line in lines))
 
     def test_ranking_card_image_size(self):
         sky = {

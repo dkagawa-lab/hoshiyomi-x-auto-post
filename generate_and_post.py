@@ -428,13 +428,63 @@ def text_width(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont) 
     return box[2] - box[0]
 
 
-def truncate_to_width(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont, max_width: int) -> str:
-    if text_width(draw, text, font) <= max_width:
-        return text
-    clipped = text
-    while clipped and text_width(draw, f"{clipped}…", font) > max_width:
-        clipped = clipped[:-1]
-    return f"{clipped}…" if clipped else ""
+def wrap_text(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont, max_width: int) -> list[str]:
+    lines: list[str] = []
+    current = ""
+    for char in text:
+        if char == "\n":
+            if current:
+                lines.append(current)
+                current = ""
+            continue
+        candidate = f"{current}{char}"
+        if current and text_width(draw, candidate, font) > max_width:
+            lines.append(current)
+            current = char.lstrip()
+        else:
+            current = candidate
+    if current:
+        lines.append(current)
+    return lines or [""]
+
+
+def line_height(draw: ImageDraw.ImageDraw, font: ImageFont.ImageFont, line_gap: int = 5) -> int:
+    box = draw.textbbox((0, 0), "星", font=font)
+    return box[3] - box[1] + line_gap
+
+
+def draw_wrapped_text(
+    draw: ImageDraw.ImageDraw,
+    x: int,
+    y: int,
+    text: str,
+    font: ImageFont.ImageFont,
+    fill: tuple[int, int, int],
+    max_width: int,
+    line_gap: int = 5,
+) -> int:
+    step = line_height(draw, font, line_gap)
+    for line in wrap_text(draw, text, font, max_width):
+        draw.text((x, y), line, font=font, fill=fill)
+        y += step
+    return y
+
+
+def draw_centered_wrapped(
+    draw: ImageDraw.ImageDraw,
+    y: int,
+    text: str,
+    font: ImageFont.ImageFont,
+    fill: tuple[int, int, int],
+    max_width: int,
+    line_gap: int = 5,
+) -> int:
+    step = line_height(draw, font, line_gap)
+    for line in wrap_text(draw, text, font, max_width):
+        width = text_width(draw, line, font)
+        draw.text(((RANKING_CARD_SIZE[0] - width) // 2, y), line, font=font, fill=fill)
+        y += step
+    return y
 
 
 def draw_centered(
@@ -527,7 +577,8 @@ def generate_ranking_card(
     title_font = find_font(52)
     rank_font = find_font(34)
     sign_font = find_font(31)
-    body_font = find_font(22)
+    top_body_font = find_font(19)
+    list_font = find_font(20)
 
     gold = (232, 199, 121)
     pale = (248, 236, 192)
@@ -542,7 +593,7 @@ def generate_ranking_card(
     draw_centered(draw, 108, f"{subtitle}", small_font, muted)
     draw_centered(draw, 154, f"{sky['date']} {sky['moon_sign']}の月", title_font, pale)
     focus = sky_focus_sentence(sky) or f"今日の鍵は「{moon_theme(sky)}」。"
-    draw_centered(draw, 224, truncate_to_width(draw, focus, small_font, 920), small_font, gold)
+    draw_centered_wrapped(draw, 218, focus, small_font, gold, 920)
 
     items = zodiac_ranking_items(sky, mode)
     top_items = items[:3]
@@ -552,15 +603,15 @@ def generate_ranking_card(
     start_x = (RANKING_CARD_SIZE[0] - top_w * 3 - gap * 2) // 2
     for index, item in enumerate(top_items):
         x = start_x + index * (top_w + gap)
-        h = 188
+        h = 240
         draw.rounded_rectangle((x, top_y, x + top_w, top_y + h), radius=28, fill=panel, outline=gold, width=3)
         draw.text((x + 22, top_y + 20), f"{item['rank']}位", font=rank_font, fill=gold)
         draw.text((x + 22, top_y + 68), str(item["sign"]), font=sign_font, fill=white)
-        draw.text((x + 22, top_y + 112), truncate_to_width(draw, str(item["tone"]), body_font, top_w - 44), font=body_font, fill=pale)
-        draw.text((x + 22, top_y + 146), truncate_to_width(draw, str(item["comment"]), body_font, top_w - 44), font=body_font, fill=muted)
+        next_y = draw_wrapped_text(draw, x + 22, top_y + 112, str(item["tone"]), top_body_font, pale, top_w - 44, 4)
+        draw_wrapped_text(draw, x + 22, next_y + 6, str(item["comment"]), top_body_font, muted, top_w - 44, 4)
 
-    list_y = 520
-    row_h = 76
+    list_y = 560
+    row_h = 112
     col_gap = 20
     col_w = 462
     left_x = 58
@@ -572,10 +623,10 @@ def generate_ranking_card(
         y = list_y + row * (row_h + 12)
         draw.rounded_rectangle((x, y, x + col_w, y + row_h), radius=18, fill=panel, outline=border, width=1)
         draw.rectangle((x, y, x + 5, y + row_h), fill=accent)
-        draw.text((x + 18, y + 18), f"{item['rank']}位", font=body_font, fill=gold)
-        draw.text((x + 92, y + 16), str(item["sign"]), font=body_font, fill=white)
+        draw.text((x + 18, y + 16), f"{item['rank']}位", font=list_font, fill=gold)
+        draw.text((x + 92, y + 16), str(item["sign"]), font=list_font, fill=white)
         comment = f"{item['tone']}。{item['comment']}"
-        draw.text((x + 200, y + 16), truncate_to_width(draw, comment, body_font, col_w - 218), font=body_font, fill=muted)
+        draw_wrapped_text(draw, x + 18, y + 52, comment, list_font, muted, col_w - 36, 4)
 
     note = "詳しい星座別コメントは、この投稿のスレッドへ。"
     if mode == "night":
