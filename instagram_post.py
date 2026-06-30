@@ -31,7 +31,9 @@ from generate_and_post import (
     SIGN_GROUPS,
     SIGN_INDEX,
     calc,
+    generate_ranking_card,
     jd_from,
+    should_skip_late_midnight,
     moon_theme,
     VALID_SLOTS,
     primary_event_sentence,
@@ -46,7 +48,7 @@ from generate_and_post import (
 
 GRAPH_API_VERSION = os.environ.get("META_GRAPH_API_VERSION", "v23.0")
 CARD_SIZE = (1080, 1350)
-OUTPUT_DIR = Path("out")
+OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", "out"))
 PUBLIC_IMAGE_CHECK_ATTEMPTS = int(os.environ.get("PUBLIC_IMAGE_CHECK_ATTEMPTS", "6"))
 PUBLIC_IMAGE_CHECK_SECONDS = int(os.environ.get("PUBLIC_IMAGE_CHECK_SECONDS", "5"))
 INSTAGRAM_CREATE_RETRIES = int(os.environ.get("INSTAGRAM_CREATE_RETRIES", "3"))
@@ -564,6 +566,9 @@ def draw_zodiac_digest(
 
 def generate_card(sky: dict[str, Any], slot: str, output_path: Path, now: datetime | None = None) -> Path:
     now = now or datetime.now(JST)
+    if slot in ("morning", "night"):
+        return generate_ranking_card(sky, slot, output_path, now)
+
     image = create_background(f"{sky['date']}-{slot}")
     draw = ImageDraw.Draw(image)
 
@@ -874,6 +879,12 @@ def main(argv: list[str] | None = None) -> None:
     slot = argv[0] if argv else slot_for(now)
     if slot not in VALID_SLOTS:
         raise SystemExit(f"slot must be one of: {', '.join(VALID_SLOTS)}")
+    if should_skip_late_midnight(slot, now):
+        print(
+            f"[skip] Midnight Instagram post started at {now.isoformat()}, "
+            "so it is too late to publish a day-change post."
+        )
+        return
 
     sky = todays_sky(now)
     caption = generate_caption(sky, slot)

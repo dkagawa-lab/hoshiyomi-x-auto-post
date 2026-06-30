@@ -41,7 +41,7 @@ from instagram_post import (
 )
 
 STORY_SIZE = (1080, 1920)
-OUTPUT_DIR = Path("out")
+OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", "out"))
 
 STORY_TITLES = {
     "midnight": "今日の星が開く",

@@ -12,10 +12,12 @@ import os
 import sys
 import time
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any
 
 import requests
 import swisseph as swe
+from PIL import Image, ImageDraw, ImageFont
 from requests_oauthlib import OAuth1
 
 JST = timezone(timedelta(hours=9))
@@ -26,6 +28,9 @@ VALID_SLOTS = ("midnight", "morning", "noon", "night")
 MAX_TWEET_CHARS = 280
 X_POST_RETRIES = int(os.environ.get("X_POST_RETRIES", "3"))
 X_POST_RETRY_SECONDS = int(os.environ.get("X_POST_RETRY_SECONDS", "30"))
+RANKING_CARD_SIZE = (1080, 1350)
+OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", "out"))
+MIDNIGHT_GRACE_HOUR = int(os.environ.get("MIDNIGHT_GRACE_HOUR", "1"))
 
 SIGNS = [
     "牡羊座",
@@ -384,6 +389,205 @@ def varied_sign_reflection_line(sign: str, sky: dict[str, Any], slot: str = "nig
     return f"{sign}: {tone}。{reflection}。"
 
 
+FONT_CANDIDATES = [
+    "/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+    "/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc",
+    "/System/Library/Fonts/ヒラギノ明朝 ProN.ttc",
+    "/Library/Fonts/Arial Unicode.ttf",
+]
+
+SIGN_SHORT_LABELS = {
+    "牡羊座": "牡羊",
+    "牡牛座": "牡牛",
+    "双子座": "双子",
+    "蟹座": "蟹",
+    "獅子座": "獅子",
+    "乙女座": "乙女",
+    "天秤座": "天秤",
+    "蠍座": "蠍",
+    "射手座": "射手",
+    "山羊座": "山羊",
+    "水瓶座": "水瓶",
+    "魚座": "魚",
+}
+
+RANKING_RELATION_ORDER = [0, 4, 8, 2, 6, 10, 1, 5, 9, 3, 7, 11]
+
+
+def find_font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    for path in FONT_CANDIDATES:
+        if Path(path).exists():
+            return ImageFont.truetype(path, size)
+    return ImageFont.load_default()
+
+
+def text_width(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont) -> int:
+    box = draw.textbbox((0, 0), text, font=font)
+    return box[2] - box[0]
+
+
+def truncate_to_width(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont, max_width: int) -> str:
+    if text_width(draw, text, font) <= max_width:
+        return text
+    clipped = text
+    while clipped and text_width(draw, f"{clipped}…", font) > max_width:
+        clipped = clipped[:-1]
+    return f"{clipped}…" if clipped else ""
+
+
+def draw_centered(
+    draw: ImageDraw.ImageDraw,
+    y: int,
+    text: str,
+    font: ImageFont.ImageFont,
+    fill: tuple[int, int, int],
+) -> None:
+    width = text_width(draw, text, font)
+    draw.text(((RANKING_CARD_SIZE[0] - width) // 2, y), text, font=font, fill=fill)
+
+
+def parse_sign_reading_line(line: str) -> tuple[str, str, str]:
+    normalized = line.replace(":", "：", 1).strip()
+    sign, _, rest = normalized.partition("：")
+    parts = [part.strip() for part in rest.split("。") if part.strip()]
+    tone = parts[0] if parts else ""
+    action = parts[1] if len(parts) > 1 else ""
+    return sign, tone, action
+
+
+def ranking_signs_for_sky(sky: dict[str, Any], slot: str) -> list[str]:
+    moon_index = SIGN_INDEX[sky["moon_sign"]]
+
+    def rank_key(sign: str) -> tuple[int, int]:
+        diff = (SIGN_INDEX[sign] - moon_index) % 12
+        return (RANKING_RELATION_ORDER.index(diff), variation_index(sky, slot, sign, 3))
+
+    return sorted(SIGNS, key=rank_key)
+
+
+def zodiac_ranking_items(sky: dict[str, Any], slot: str) -> list[dict[str, str | int]]:
+    mode = "night" if slot == "night" else "morning"
+    items: list[dict[str, str | int]] = []
+    for rank, sign in enumerate(ranking_signs_for_sky(sky, mode), start=1):
+        line = (
+            varied_sign_reflection_line(sign, sky, "night")
+            if mode == "night"
+            else varied_sign_guidance_line(sign, sky, "morning")
+        )
+        _, tone, action = parse_sign_reading_line(line)
+        items.append(
+            {
+                "rank": rank,
+                "sign": sign,
+                "short": SIGN_SHORT_LABELS.get(sign, sign.replace("座", "")),
+                "tone": tone,
+                "comment": action,
+            }
+        )
+    return items
+
+
+def create_ranking_background(seed: str) -> Image.Image:
+    width, height = RANKING_CARD_SIZE
+    image = Image.new("RGB", RANKING_CARD_SIZE, (9, 13, 34))
+    draw = ImageDraw.Draw(image)
+    for y in range(height):
+        ratio = y / max(height - 1, 1)
+        r = int(9 + 17 * ratio)
+        g = int(13 + 13 * ratio)
+        b = int(34 + 28 * ratio)
+        draw.line((0, y, width, y), fill=(r, g, b))
+
+    seed_value = sum((index + 1) * ord(char) for index, char in enumerate(seed))
+    for index in range(130):
+        x = (seed_value * (index + 13) * 37) % width
+        y = (seed_value * (index + 29) * 19) % height
+        brightness = 110 + ((seed_value + index * 23) % 110)
+        radius = 1 if index % 7 else 2
+        draw.ellipse((x - radius, y - radius, x + radius, y + radius), fill=(brightness, brightness, min(255, brightness + 28)))
+
+    return image
+
+
+def generate_ranking_card(
+    sky: dict[str, Any],
+    slot: str,
+    output_path: Path,
+    now: datetime | None = None,
+) -> Path:
+    now = now or datetime.now(JST)
+    mode = "night" if slot == "night" else "morning"
+    image = create_ranking_background(f"{sky['date']}-{mode}-ranking")
+    draw = ImageDraw.Draw(image)
+
+    brand_font = find_font(48)
+    small_font = find_font(24)
+    title_font = find_font(52)
+    rank_font = find_font(34)
+    sign_font = find_font(31)
+    body_font = find_font(22)
+
+    gold = (232, 199, 121)
+    pale = (248, 236, 192)
+    white = (248, 246, 235)
+    muted = (187, 181, 206)
+    border = (88, 80, 132)
+    panel = (17, 20, 52)
+    accent = (178, 135, 79)
+
+    draw_centered(draw, 48, "HOSHIYOMI", brand_font, gold)
+    subtitle = "12星座ランキング / 今日の使い方" if mode == "morning" else "12星座ランキング / 夜の振り返り"
+    draw_centered(draw, 108, f"{subtitle}", small_font, muted)
+    draw_centered(draw, 154, f"{sky['date']} {sky['moon_sign']}の月", title_font, pale)
+    focus = sky_focus_sentence(sky) or f"今日の鍵は「{moon_theme(sky)}」。"
+    draw_centered(draw, 224, truncate_to_width(draw, focus, small_font, 920), small_font, gold)
+
+    items = zodiac_ranking_items(sky, mode)
+    top_items = items[:3]
+    top_y = 286
+    top_w = 298
+    gap = 22
+    start_x = (RANKING_CARD_SIZE[0] - top_w * 3 - gap * 2) // 2
+    for index, item in enumerate(top_items):
+        x = start_x + index * (top_w + gap)
+        h = 188
+        draw.rounded_rectangle((x, top_y, x + top_w, top_y + h), radius=28, fill=panel, outline=gold, width=3)
+        draw.text((x + 22, top_y + 20), f"{item['rank']}位", font=rank_font, fill=gold)
+        draw.text((x + 22, top_y + 68), str(item["sign"]), font=sign_font, fill=white)
+        draw.text((x + 22, top_y + 112), truncate_to_width(draw, str(item["tone"]), body_font, top_w - 44), font=body_font, fill=pale)
+        draw.text((x + 22, top_y + 146), truncate_to_width(draw, str(item["comment"]), body_font, top_w - 44), font=body_font, fill=muted)
+
+    list_y = 520
+    row_h = 76
+    col_gap = 20
+    col_w = 462
+    left_x = 58
+    right_x = left_x + col_w + col_gap
+    for index, item in enumerate(items[3:]):
+        column = 0 if index < 5 else 1
+        row = index if index < 5 else index - 5
+        x = left_x if column == 0 else right_x
+        y = list_y + row * (row_h + 12)
+        draw.rounded_rectangle((x, y, x + col_w, y + row_h), radius=18, fill=panel, outline=border, width=1)
+        draw.rectangle((x, y, x + 5, y + row_h), fill=accent)
+        draw.text((x + 18, y + 18), f"{item['rank']}位", font=body_font, fill=gold)
+        draw.text((x + 92, y + 16), str(item["sign"]), font=body_font, fill=white)
+        comment = f"{item['tone']}。{item['comment']}"
+        draw.text((x + 200, y + 16), truncate_to_width(draw, comment, body_font, col_w - 218), font=body_font, fill=muted)
+
+    note = "詳しい星座別コメントは、この投稿のスレッドへ。"
+    if mode == "night":
+        note = "詳しい星座別の振り返りは、この投稿のスレッドへ。"
+    draw_centered(draw, 1236, note, small_font, pale)
+    draw_centered(draw, 1280, "hoshiyomi4u.com", small_font, gold)
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    image.save(output_path, quality=92, optimize=True)
+    return output_path
+
+
 def trim_tweet(text: str) -> str:
     lines = [" ".join(line.strip().split()) for line in text.strip().splitlines() if line.strip()]
     text = "\n".join(lines)
@@ -667,6 +871,10 @@ def generate_post_texts(sky: dict[str, Any], slot: str) -> list[str]:
     return [generate_text(sky, slot)]
 
 
+def should_skip_late_midnight(slot: str, now: datetime) -> bool:
+    return slot == "midnight" and now.astimezone(JST).hour >= MIDNIGHT_GRACE_HOUR
+
+
 def is_duplicate_tweet_response(response: requests.Response) -> bool:
     if response.status_code != 403:
         return False
@@ -680,27 +888,63 @@ def is_duplicate_tweet_response(response: requests.Response) -> bool:
     return "duplicate content" in f"{detail} {title}".lower()
 
 
-def post_to_x(text: str, reply_to_tweet_id: str | None = None) -> dict[str, Any]:
+def x_auth() -> OAuth1:
     required_envs = ["X_API_KEY", "X_API_SECRET", "X_ACCESS_TOKEN", "X_ACCESS_SECRET"]
     missing = [name for name in required_envs if not os.environ.get(name)]
     if missing:
         raise RuntimeError(f"Missing X API environment variables: {', '.join(missing)}")
 
-    auth = OAuth1(
+    return OAuth1(
         os.environ["X_API_KEY"],
         os.environ["X_API_SECRET"],
         os.environ["X_ACCESS_TOKEN"],
         os.environ["X_ACCESS_SECRET"],
     )
+
+
+def upload_media_to_x(image_path: Path) -> str:
+    with image_path.open("rb") as image_file:
+        response = requests.post(
+            "https://upload.twitter.com/1.1/media/upload.json",
+            auth=x_auth(),
+            files={"media": image_file},
+            data={"media_category": "tweet_image"},
+            timeout=60,
+        )
+    if response.status_code == 401:
+        raise RuntimeError(
+            "X media upload returned 401 Unauthorized. Regenerate OAuth 1.0a Access "
+            f"Token and Secret after enabling Read and write. Response: {response.text}"
+        )
+    if response.status_code == 403:
+        raise RuntimeError(
+            "X media upload returned 403 Forbidden. Check that the app has media "
+            f"upload/post permissions. Response: {response.text}"
+        )
+    response.raise_for_status()
+    payload = response.json()
+    media_id = payload.get("media_id_string") or payload.get("media_id")
+    if not media_id:
+        raise RuntimeError(f"X media upload response did not include media id: {json.dumps(payload, ensure_ascii=False)}")
+    return str(media_id)
+
+
+def post_to_x(
+    text: str,
+    reply_to_tweet_id: str | None = None,
+    media_ids: list[str] | None = None,
+) -> dict[str, Any]:
     payload: dict[str, Any] = {"text": text}
     if reply_to_tweet_id:
         payload["reply"] = {"in_reply_to_tweet_id": reply_to_tweet_id}
+    if media_ids:
+        payload["media"] = {"media_ids": media_ids}
 
     response: requests.Response | None = None
     for attempt in range(1, X_POST_RETRIES + 1):
         response = requests.post(
             "https://api.twitter.com/2/tweets",
-            auth=auth,
+            auth=x_auth(),
             json=payload,
             timeout=30,
         )
@@ -768,6 +1012,12 @@ def main(argv: list[str] | None = None) -> None:
     slot = argv[0] if argv else slot_for(now)
     if slot not in VALID_SLOTS:
         raise SystemExit(f"slot must be one of: {', '.join(VALID_SLOTS)}")
+    if should_skip_late_midnight(slot, now):
+        print(
+            f"[skip] Midnight post started at {now.isoformat()}, "
+            "so it is too late to publish a day-change post."
+        )
+        return
 
     sky = todays_sky(now)
     print(f"[sky] {json.dumps(sky, ensure_ascii=False)}")
@@ -776,14 +1026,26 @@ def main(argv: list[str] | None = None) -> None:
     for index, text in enumerate(texts, start=1):
         print(f"[post:{slot}:{index}/{len(texts)}]\n{text}\n")
 
+    ranking_card_path: Path | None = None
+    if slot in ("morning", "night"):
+        filename = f"{now.strftime('%Y%m%d-%H%M%S')}-{slot}-ranking.jpg"
+        ranking_card_path = generate_ranking_card(sky, slot, OUTPUT_DIR / filename, now)
+        print(f"[x:{slot}:ranking_image] {ranking_card_path}")
+
     if os.environ.get("DRY_RUN") == "1":
         print("[dry-run] skipped posting to X")
         return
 
+    ranking_media_id: str | None = None
+    if ranking_card_path:
+        ranking_media_id = upload_media_to_x(ranking_card_path)
+        print(f"[x:media_id] {ranking_media_id}")
+
     results: list[dict[str, Any]] = []
     reply_to_tweet_id: str | None = None
-    for text in texts:
-        result = post_to_x(text, reply_to_tweet_id)
+    for index, text in enumerate(texts, start=1):
+        media_ids = [ranking_media_id] if index == 1 and ranking_media_id else None
+        result = post_to_x(text, reply_to_tweet_id, media_ids=media_ids)
         results.append(result)
         if result.get("duplicate"):
             print("[duplicate] X already has this content; skipped remaining tweets to avoid duplicates.")

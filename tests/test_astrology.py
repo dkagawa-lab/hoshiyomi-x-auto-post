@@ -10,13 +10,17 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 from generate_and_post import (
     JST,
     MAX_TWEET_CHARS,
+    RANKING_CARD_SIZE,
     SITE_URL,
     build_morning_thread,
     build_night_thread,
     crosses,
+    generate_ranking_card,
     is_duplicate_tweet_response,
+    should_skip_late_midnight,
     sign_of,
     slot_for,
+    zodiac_ranking_items,
 )
 from instagram_post import CARD_SIZE, InstagramGraphAPIError, generate_card, is_instagram_media_download_error, zodiac_caption
 from instagram_story import STORY_SIZE, generate_story, story_body
@@ -55,6 +59,11 @@ class AstrologyHelperTests(unittest.TestCase):
     def test_slot_for_converts_to_jst(self):
         utc = timezone(timedelta(0))
         self.assertEqual(slot_for(datetime(2026, 6, 9, 15, 0, tzinfo=utc)), "midnight")
+
+    def test_late_midnight_run_is_skipped(self):
+        self.assertFalse(should_skip_late_midnight("midnight", datetime(2026, 6, 10, 0, 59, tzinfo=JST)))
+        self.assertTrue(should_skip_late_midnight("midnight", datetime(2026, 6, 10, 1, 0, tzinfo=JST)))
+        self.assertFalse(should_skip_late_midnight("morning", datetime(2026, 6, 10, 9, 0, tzinfo=JST)))
 
     def test_duplicate_tweet_response_detection(self):
         response = self.make_response(
@@ -151,6 +160,38 @@ class AstrologyHelperTests(unittest.TestCase):
 
         with Image.open(path) as image:
             self.assertEqual(image.size, CARD_SIZE)
+
+    def test_zodiac_ranking_items_include_all_signs(self):
+        sky = {
+            "date": "2026年06月12日",
+            "weekday": "金曜日",
+            "moon_sign": "牡牛座",
+            "moon_phase": "新月前の月",
+            "events": [],
+            "retrogrades": ["冥王星(水瓶座)"],
+        }
+        items = zodiac_ranking_items(sky, "morning")
+
+        self.assertEqual(len(items), 12)
+        self.assertEqual({item["sign"] for item in items}, set(("牡羊座", "牡牛座", "双子座", "蟹座", "獅子座", "乙女座", "天秤座", "蠍座", "射手座", "山羊座", "水瓶座", "魚座")))
+        self.assertEqual([item["rank"] for item in items], list(range(1, 13)))
+
+    def test_ranking_card_image_size(self):
+        sky = {
+            "date": "2026年06月12日",
+            "weekday": "金曜日",
+            "moon_sign": "牡牛座",
+            "moon_phase": "新月前の月",
+            "events": [],
+            "retrogrades": ["冥王星(水瓶座)"],
+        }
+        output = pathlib.Path("/tmp/hoshiyomi-ranking-card-test.jpg")
+        path = generate_ranking_card(sky, "morning", output, datetime(2026, 6, 12, 8, 0, tzinfo=JST))
+
+        from PIL import Image
+
+        with Image.open(path) as image:
+            self.assertEqual(image.size, RANKING_CARD_SIZE)
 
     def test_instagram_media_download_error_detection(self):
         error = InstagramGraphAPIError(
