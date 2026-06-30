@@ -441,24 +441,36 @@ FORTUNE_SECTION_META = {
         "title": "総合運ランキング",
         "subtitle": "恋愛・金運・仕事を合わせた今日の流れ",
         "color": (232, 199, 121),
+        "english": "TOTAL FORTUNE",
+        "badge": "今日の総合バランス",
+        "index_label": "総合指数",
     },
     "love": {
         "label": "恋愛運",
         "title": "恋愛運ランキング",
         "subtitle": "金星の位置から見る、恋の動き方",
         "color": (225, 151, 180),
+        "english": "LOVE FORTUNE",
+        "badge": "恋の動き方",
+        "index_label": "恋愛指数",
     },
     "money": {
         "label": "金運",
         "title": "金運ランキング",
         "subtitle": "木星の位置から見る、お金の流れ",
         "color": (232, 199, 121),
+        "english": "MONEY FORTUNE",
+        "badge": "お金の流れ",
+        "index_label": "金運指数",
     },
     "work": {
         "label": "仕事運",
         "title": "仕事運ランキング",
         "subtitle": "水星の位置から見る、仕事の進め方",
         "color": (144, 192, 233),
+        "english": "WORK FORTUNE",
+        "badge": "仕事の進め方",
+        "index_label": "仕事指数",
     },
 }
 
@@ -605,6 +617,52 @@ def draw_centered(
     draw.text(((RANKING_CARD_SIZE[0] - width) // 2, y), text, font=font, fill=fill)
 
 
+def blend_color(
+    color: tuple[int, int, int],
+    base: tuple[int, int, int] = (9, 13, 34),
+    ratio: float = 0.5,
+) -> tuple[int, int, int]:
+    return tuple(int(base[index] * (1 - ratio) + color[index] * ratio) for index in range(3))
+
+
+def draw_theme_motif(
+    draw: ImageDraw.ImageDraw,
+    section_key: str,
+    accent: tuple[int, int, int],
+) -> None:
+    color = blend_color(accent, ratio=0.62)
+    faint = blend_color(accent, ratio=0.28)
+    if section_key == "love":
+        cx, cy = 915, 178
+        draw.ellipse((cx - 52, cy - 42, cx + 8, cy + 18), fill=faint, outline=color, width=2)
+        draw.ellipse((cx - 8, cy - 42, cx + 52, cy + 18), fill=faint, outline=color, width=2)
+        draw.polygon([(cx - 60, cy - 4), (cx + 60, cy - 4), (cx, cy + 76)], fill=faint, outline=color)
+        return
+    if section_key == "money":
+        for offset, radius in ((0, 56), (-44, 42), (46, 38)):
+            cx, cy = 902 + offset, 188 + abs(offset) // 4
+            draw.ellipse((cx - radius, cy - radius, cx + radius, cy + radius), fill=faint, outline=color, width=3)
+            draw.arc((cx - radius + 14, cy - radius + 14, cx + radius - 14, cy + radius - 14), 35, 325, fill=color, width=3)
+        return
+    if section_key == "work":
+        base_y = 242
+        xs = [824, 872, 922, 976]
+        ys = [226, 192, 210, 154]
+        for index in range(len(xs) - 1):
+            draw.line((xs[index], ys[index], xs[index + 1], ys[index + 1]), fill=color, width=6)
+        for x, y in zip(xs, ys):
+            draw.ellipse((x - 9, y - 9, x + 9, y + 9), fill=accent)
+        for index, x in enumerate(xs):
+            draw.rounded_rectangle((x - 13, base_y - index * 18, x + 13, base_y + 52), radius=7, fill=faint, outline=color, width=2)
+        return
+
+    cx, cy = 905, 190
+    for radius in (74, 48, 22):
+        draw.ellipse((cx - radius, cy - radius // 2, cx + radius, cy + radius // 2), outline=color, width=2)
+    draw.ellipse((cx - 9, cy - 9, cx + 9, cy + 9), fill=accent)
+    draw.ellipse((cx + 54, cy - 18, cx + 68, cy - 4), fill=color)
+
+
 def parse_sign_reading_line(line: str) -> tuple[str, str, str]:
     normalized = line.replace(":", "：", 1).strip()
     sign, _, rest = normalized.partition("：")
@@ -706,6 +764,12 @@ def overall_fortune_rankings(sky: dict[str, Any]) -> list[dict[str, Any]]:
     return sorted(items, key=rank_key)
 
 
+def fortune_index_score(sky: dict[str, Any], section_key: str, item: dict[str, Any], rank: int) -> int:
+    """Return a visible 100-point index derived from rank with deterministic variation."""
+    offset = variation_index(sky, section_key, str(item["sign"]), 2)
+    return max(60, 98 - (rank - 1) * 3 - offset)
+
+
 def fortune_ranking_items(sky: dict[str, Any], section_key: str) -> list[dict[str, Any]]:
     if section_key == "overall":
         ranked = overall_fortune_rankings(sky)
@@ -716,10 +780,18 @@ def fortune_ranking_items(sky: dict[str, Any], section_key: str) -> list[dict[st
 
     items: list[dict[str, Any]] = []
     for rank, item in enumerate(ranked, start=1):
+        visible_score = fortune_index_score(sky, section_key, item, rank)
         if section_key == "overall":
             fortunes = item["fortunes"]
-            score = sum(int(fortune["score"]) for fortune in fortunes.values())
-            tone = f"総合{score}点"
+            raw_score = sum(int(fortune["score"]) for fortune in fortunes.values())
+            if rank <= 3:
+                tone = "主役級の流れ"
+            elif rank <= 6:
+                tone = "使いどころが多い日"
+            elif rank <= 9:
+                tone = "テーマを絞る日"
+            else:
+                tone = "無理せず整える日"
             comment = (
                 f"恋愛{fortunes['love']['tone']}・"
                 f"金運{fortunes['money']['tone']}・"
@@ -727,7 +799,7 @@ def fortune_ranking_items(sky: dict[str, Any], section_key: str) -> list[dict[st
             )
         else:
             fortune = item["fortunes"][section_key]
-            score = int(fortune["score"])
+            raw_score = int(fortune["score"])
             tone = str(fortune["tone"])
             comment = str(fortune["comment"])
 
@@ -736,7 +808,8 @@ def fortune_ranking_items(sky: dict[str, Any], section_key: str) -> list[dict[st
                 **item,
                 "rank": rank,
                 "short": SIGN_SHORT_LABELS.get(item["sign"], item["sign"].replace("座", "")),
-                "score": score,
+                "score": visible_score,
+                "raw_score": raw_score,
                 "tone": tone,
                 "comment": comment,
             }
@@ -767,10 +840,12 @@ def format_three_fortune_line(item: dict[str, Any]) -> str:
 def format_fortune_ranking_line(item: dict[str, Any], section_key: str) -> str:
     rank = item["rank"]
     sign = item["sign"]
+    index_label = FORTUNE_SECTION_META[section_key]["index_label"]
+    index_text = f"{index_label}{item['score']}/100"
     if section_key == "overall":
         dominant = item["dominant"]
-        return f"{rank}位 {sign}: {item['comment']}。今日は{dominant['short']}の流れを優先。"
-    return f"{rank}位 {sign}: {item['tone']}。{item['comment']}。"
+        return f"{rank}位 {sign}: {index_text}。{item['comment']}。今日は{dominant['short']}の流れを優先。"
+    return f"{rank}位 {sign}: {index_text}。{item['tone']}。{item['comment']}。"
 
 
 def noon_section_header(sky: dict[str, Any], section_key: str) -> str:
@@ -1015,6 +1090,7 @@ def generate_fortune_ranking_card(
     brand_font = find_font(46)
     small_font = find_font(23)
     title_font = find_font(54)
+    badge_font = find_font(22)
     rank_font = find_font(34)
     sign_font = find_font(31)
     top_body_font = find_font(19)
@@ -1027,19 +1103,25 @@ def generate_fortune_ranking_card(
     border = (88, 80, 132)
     panel = (17, 20, 52)
 
+    draw_theme_motif(draw, section_key, accent_color)
     draw_centered(draw, 48, "HOSHIYOMI", brand_font, gold)
     draw_centered(draw, 104, f"{sky['date']} / 太陽星座別", small_font, muted)
     draw_centered(draw, 154, str(meta["title"]), title_font, pale)
+    badge_text = f"{meta['english']}  |  {meta['badge']}"
+    badge_w = min(820, text_width(draw, badge_text, badge_font) + 72)
+    badge_x1 = (RANKING_CARD_SIZE[0] - badge_w) // 2
+    draw.rounded_rectangle((badge_x1, 214, badge_x1 + badge_w, 258), radius=22, fill=(18, 22, 56), outline=accent_color, width=2)
+    draw_centered(draw, 224, badge_text, badge_font, accent_color)
     if section_key == "overall":
         subtitle = f"{meta['subtitle']}。{three_fortune_overview(sky)}。"
     else:
         domain = FORTUNE_DOMAIN_BY_KEY[section_key]
         subtitle = f"{meta['subtitle']}。{domain['planet']}は{planet_sign_from_sky(sky, domain['planet'])}。"
-    draw_centered_wrapped(draw, 222, subtitle, small_font, accent_color, 920)
+    draw_centered_wrapped(draw, 268, subtitle, small_font, accent_color, 920)
 
     items = fortune_ranking_items(sky, section_key)
     top_items = items[:3]
-    top_y = 286
+    top_y = 326
     top_w = 298
     gap = 22
     start_x = (RANKING_CARD_SIZE[0] - top_w * 3 - gap * 2) // 2
@@ -1049,11 +1131,16 @@ def generate_fortune_ranking_card(
         draw.rounded_rectangle((x, top_y, x + top_w, top_y + h), radius=28, fill=panel, outline=accent_color, width=3)
         draw.text((x + 22, top_y + 20), f"{item['rank']}位", font=rank_font, fill=gold)
         draw.text((x + 22, top_y + 68), str(item["sign"]), font=sign_font, fill=white)
-        next_y = draw_wrapped_text(draw, x + 22, top_y + 112, str(item["tone"]), top_body_font, pale, top_w - 44, 4)
-        draw_wrapped_text(draw, x + 22, next_y + 6, str(item["comment"]), top_body_font, muted, top_w - 44, 4)
+        score_text = f"{meta['index_label']} {item['score']}/100"
+        draw.rounded_rectangle((x + 22, top_y + 108, x + top_w - 22, top_y + 143), radius=17, fill=(24, 28, 67), outline=accent_color, width=1)
+        draw_center_x = x + top_w // 2
+        score_w = text_width(draw, score_text, top_body_font)
+        draw.text((draw_center_x - score_w // 2, top_y + 115), score_text, font=top_body_font, fill=accent_color)
+        next_y = draw_wrapped_text(draw, x + 22, top_y + 154, str(item["tone"]), top_body_font, pale, top_w - 44, 4)
+        draw_wrapped_text(draw, x + 22, next_y + 4, str(item["comment"]), top_body_font, muted, top_w - 44, 4)
 
-    list_y = 558
-    row_h = 122
+    list_y = 608
+    row_h = 112
     col_gap = 20
     col_w = 462
     left_x = 58
@@ -1067,6 +1154,9 @@ def generate_fortune_ranking_card(
         draw.rectangle((x, y, x + 5, y + row_h), fill=accent_color)
         draw.text((x + 18, y + 16), f"{item['rank']}位", font=list_font, fill=gold)
         draw.text((x + 92, y + 16), str(item["sign"]), font=list_font, fill=white)
+        score_text = f"{item['score']}/100"
+        score_w = text_width(draw, score_text, list_font)
+        draw.text((x + col_w - score_w - 20, y + 16), score_text, font=list_font, fill=accent_color)
         comment = f"{item['tone']}。{item['comment']}"
         draw_wrapped_text(draw, x + 18, y + 52, comment, list_font, muted, col_w - 36, 4)
 
