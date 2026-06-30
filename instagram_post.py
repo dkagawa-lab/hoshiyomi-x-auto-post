@@ -23,6 +23,7 @@ from PIL import Image, ImageDraw, ImageFont
 from generate_and_post import (
     ANTHROPIC_MODEL,
     ANTHROPIC_VERSION,
+    HASHTAG_PATTERN,
     JST,
     NOON_SECTION_ORDER,
     PLANETS,
@@ -34,9 +35,12 @@ from generate_and_post import (
     calc,
     generate_fortune_ranking_card,
     generate_ranking_card,
+    hashtag_candidates_for_post,
     jd_from,
+    trend_hashtags,
     should_skip_late_midnight,
     moon_theme,
+    unique_hashtags,
     VALID_SLOTS,
     primary_event_sentence,
     retrograde_sentence,
@@ -55,6 +59,7 @@ OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", "out"))
 PUBLIC_IMAGE_CHECK_ATTEMPTS = int(os.environ.get("PUBLIC_IMAGE_CHECK_ATTEMPTS", "6"))
 PUBLIC_IMAGE_CHECK_SECONDS = int(os.environ.get("PUBLIC_IMAGE_CHECK_SECONDS", "5"))
 INSTAGRAM_CREATE_RETRIES = int(os.environ.get("INSTAGRAM_CREATE_RETRIES", "3"))
+INSTAGRAM_MAX_HASHTAGS = int(os.environ.get("INSTAGRAM_MAX_HASHTAGS", "8"))
 
 FONT_CANDIDATES = [
     "/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc",
@@ -624,16 +629,28 @@ def generate_card_paths(sky: dict[str, Any], slot: str, output_dir: Path, now: d
     return [generate_card(sky, slot, output_dir / f"{timestamp}-{slot}.jpg", now)]
 
 
+def apply_instagram_hashtags(caption: str, sky: dict[str, Any], slot: str) -> str:
+    tags = hashtag_candidates_for_post(sky, slot, 1, caption, trend_hashtags())
+    if slot == "morning":
+        tags.extend(["#恋愛運", "#金運", "#仕事運"])
+    selected_tags = unique_hashtags(tags)[: max(1, INSTAGRAM_MAX_HASHTAGS - 1)]
+    selected_tags = unique_hashtags(selected_tags + ["#HOSHIYOMI"])
+    body = HASHTAG_PATTERN.sub("", caption).strip()
+    body = "\n".join(line.rstrip() for line in body.splitlines()).strip()
+    return f"{body}\n\n{' '.join(selected_tags)}"
+
+
 def fallback_caption(sky: dict[str, Any], slot: str) -> str:
     if slot == "morning":
-        return three_fortunes_caption(sky)
+        return apply_instagram_hashtags(three_fortunes_caption(sky), sky, slot)
     if slot == "night":
-        return zodiac_caption(sky, slot)
-    return CAPTION_TEMPLATES[slot].format(
+        return apply_instagram_hashtags(zodiac_caption(sky, slot), sky, slot)
+    caption = CAPTION_TEMPLATES[slot].format(
         event_line=primary_event_sentence(sky),
         theme=moon_theme(sky),
         **sky,
     )
+    return apply_instagram_hashtags(caption, sky, slot)
 
 
 def instagram_prompt(sky: dict[str, Any], slot: str) -> str:
@@ -700,7 +717,7 @@ def extract_claude_text(payload: dict[str, Any]) -> str:
 
 def generate_caption(sky: dict[str, Any], slot: str) -> str:
     if slot == "morning":
-        return three_fortunes_caption(sky)
+        return apply_instagram_hashtags(three_fortunes_caption(sky), sky, slot)
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
@@ -723,7 +740,7 @@ def generate_caption(sky: dict[str, Any], slot: str) -> str:
         )
         response.raise_for_status()
         text = extract_claude_text(response.json())
-        return text or fallback_caption(sky, slot)
+        return apply_instagram_hashtags(text, sky, slot) if text else fallback_caption(sky, slot)
     except requests.RequestException as exc:
         print(f"[warn] Anthropic API failed; using Instagram template mode: {exc}", file=sys.stderr)
         return fallback_caption(sky, slot)

@@ -51,6 +51,20 @@ GitHubのリポジトリで `Settings` → `Secrets and variables` → `Actions`
 
 `SITE_URL` はワークフロー内で `https://hoshiyomi4u.com/m` を渡しています。
 
+### トレンド寄せハッシュタグ
+
+投稿には、本文の長さを見ながら最大3つまでハッシュタグを自動で付けます。基本タグ（`#星読み` / `#占星術`）に加えて、投稿テーマ（`#恋愛運` / `#金運` / `#仕事運` など）、当日の天体イベント（`#満月` / `#新月` / `#星の逆行` など）、季節タグを候補にします。
+
+GitHubの `Settings` → `Secrets and variables` → `Actions` → `Variables` に、次のRepository variablesを入れると、最近のトレンドに寄せたタグも候補にできます。
+
+| Variable名 | 用途 | 例 |
+|---|---|---|
+| `TREND_HASHTAGS` | 手動で優先したいトレンドタグ。カンマまたはスペース区切り | `#満月,#七夕,#恋愛運` |
+| `ENABLE_X_TRENDS` | `1` にするとXのトレンドAPI取得を試す。権限がない場合は自動でフォールバック | `0` |
+| `X_TRENDS_WOEID` | Xトレンド取得地域。未設定なら日本 `23424856` | `23424856` |
+
+安全のため、事件・災害・政治・訃報などのタグは自動除外します。XのトレンドAPIは利用プランや権限で失敗することがあるため、運用では `TREND_HASHTAGS` にその週の使いたいタグを入れる方法が一番安定します。
+
 ### Instagram用
 
 Instagramはテキストだけでは投稿できないため、`instagram_post.py` が1080×1350の画像カードを生成し、Supabase Storageへアップロードした公開URLをInstagram Graph APIへ渡します。朝は総合運・恋愛運・金運・仕事運の4枚カルーセル、夜はXの1投稿目と同じ設計の12星座ランキング画像、日付変更直後は「今日の星図」風カードを使います。ストーリーズは `instagram_story.py` が1080×1920の専用画像を作り、`media_type=STORIES` で投稿します。

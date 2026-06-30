@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import time
 from datetime import datetime, timedelta, timezone
@@ -31,6 +32,9 @@ X_POST_RETRY_SECONDS = int(os.environ.get("X_POST_RETRY_SECONDS", "30"))
 RANKING_CARD_SIZE = (1080, 1350)
 OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", "out"))
 MIDNIGHT_GRACE_HOUR = int(os.environ.get("MIDNIGHT_GRACE_HOUR", "1"))
+MAX_HASHTAGS_PER_POST = int(os.environ.get("MAX_HASHTAGS_PER_POST", "3"))
+DEFAULT_TRENDS_WOEID = os.environ.get("X_TRENDS_WOEID", "23424856")
+HASHTAG_PATTERN = re.compile(r"#[\wぁ-んァ-ヶ一-龠ー]+")
 
 SIGNS = [
     "牡羊座",
@@ -473,6 +477,81 @@ FORTUNE_SECTION_META = {
         "index_label": "仕事指数",
     },
 }
+
+SECTION_HASHTAGS = {
+    "overall": ["#今日の運勢", "#12星座占い", "#星座占い"],
+    "love": ["#恋愛運", "#恋愛占い", "#恋の星読み"],
+    "money": ["#金運", "#開運", "#お金の流れ"],
+    "work": ["#仕事運", "#仕事占い", "#今日の仕事運"],
+    "midnight": ["#今日の運勢", "#星座占い", "#開運"],
+    "night": ["#今日の振り返り", "#星座占い", "#明日の運勢"],
+}
+
+SEASONAL_HASHTAGS_BY_MONTH = {
+    1: ["#新年", "#開運", "#今年の運勢"],
+    2: ["#バレンタイン", "#恋愛運", "#春待ち"],
+    3: ["#春分", "#新生活", "#開運"],
+    4: ["#新生活", "#春の運勢", "#仕事運"],
+    5: ["#五月病対策", "#恋愛運", "#金運"],
+    6: ["#夏至", "#梅雨", "#上半期振り返り"],
+    7: ["#七夕", "#夏の運勢", "#恋愛運"],
+    8: ["#夏休み", "#開運", "#恋愛運"],
+    9: ["#秋分", "#仕事運", "#金運"],
+    10: ["#秋の運勢", "#開運", "#仕事運"],
+    11: ["#年末準備", "#金運", "#開運"],
+    12: ["#年末", "#来年の運勢", "#開運"],
+}
+
+TREND_INCLUDE_KEYWORDS = (
+    "星",
+    "占",
+    "運",
+    "恋",
+    "金運",
+    "仕事",
+    "開運",
+    "満月",
+    "新月",
+    "月",
+    "水星",
+    "金星",
+    "木星",
+    "逆行",
+    "春分",
+    "夏至",
+    "秋分",
+    "冬至",
+    "七夕",
+    "梅雨",
+    "週末",
+    "新生活",
+    "年末",
+)
+
+TREND_EXCLUDE_KEYWORDS = (
+    "地震",
+    "津波",
+    "台風",
+    "災害",
+    "事故",
+    "火災",
+    "訃報",
+    "死亡",
+    "死去",
+    "殺人",
+    "事件",
+    "戦争",
+    "攻撃",
+    "避難",
+    "炎上",
+    "不倫",
+    "逮捕",
+    "訴訟",
+    "選挙",
+    "政治",
+    "感染",
+    "病気",
+)
 
 FORTUNE_SCORE_BY_DIFF = {
     0: 5,
@@ -1409,6 +1488,194 @@ def trim_tweet(text: str) -> str:
     return f"{text[: MAX_TWEET_CHARS - 1].rstrip()}…"
 
 
+def normalize_hashtag(value: str) -> str:
+    tag = value.strip()
+    if not tag:
+        return ""
+    tag = tag if tag.startswith("#") else f"#{tag}"
+    tag = re.sub(r"[^\wぁ-んァ-ヶ一-龠ー#]", "", tag)
+    if tag == "#" or len(tag) < 3:
+        return ""
+    return tag
+
+
+def unique_hashtags(tags: list[str]) -> list[str]:
+    unique: list[str] = []
+    seen: set[str] = set()
+    for raw_tag in tags:
+        tag = normalize_hashtag(raw_tag)
+        key = tag.lower()
+        if not tag or key in seen:
+            continue
+        seen.add(key)
+        unique.append(tag)
+    return unique
+
+
+def is_safe_trend_hashtag(tag: str) -> bool:
+    text = normalize_hashtag(tag).lstrip("#")
+    if not text or len(text) > 20:
+        return False
+    if any(keyword in text for keyword in TREND_EXCLUDE_KEYWORDS):
+        return False
+    return any(keyword in text for keyword in TREND_INCLUDE_KEYWORDS)
+
+
+def manual_trend_hashtags() -> list[str]:
+    raw = os.environ.get("TREND_HASHTAGS", "")
+    if not raw.strip():
+        return []
+    parts = re.split(r"[\s,、]+", raw)
+    return [tag for tag in unique_hashtags(parts) if is_safe_trend_hashtag(tag)]
+
+
+def fetch_x_trend_hashtags() -> list[str]:
+    if os.environ.get("ENABLE_X_TRENDS") != "1":
+        return []
+    try:
+        response = requests.get(
+            "https://api.twitter.com/1.1/trends/place.json",
+            auth=x_auth(),
+            params={"id": DEFAULT_TRENDS_WOEID},
+            timeout=20,
+        )
+        response.raise_for_status()
+        payload = response.json()
+    except (RuntimeError, requests.RequestException, ValueError) as exc:
+        print(f"[warn] X trends unavailable; using fallback hashtags: {exc}", file=sys.stderr)
+        return []
+
+    if not isinstance(payload, list) or not payload:
+        return []
+    trends = payload[0].get("trends", [])
+    if not isinstance(trends, list):
+        return []
+
+    ranked: list[tuple[int, str]] = []
+    for index, trend in enumerate(trends):
+        if not isinstance(trend, dict):
+            continue
+        name = normalize_hashtag(str(trend.get("name", "")))
+        if not name.startswith("#") or not is_safe_trend_hashtag(name):
+            continue
+        volume = trend.get("tweet_volume")
+        score = int(volume) if isinstance(volume, int) else max(1, 100 - index)
+        ranked.append((score, name))
+    ranked.sort(reverse=True)
+    return unique_hashtags([tag for _, tag in ranked])
+
+
+def trend_hashtags() -> list[str]:
+    return unique_hashtags(manual_trend_hashtags() + fetch_x_trend_hashtags())
+
+
+def section_key_for_post(slot: str, post_index: int) -> str | None:
+    if slot == "morning":
+        section_index = (post_index - 1) // NOON_TWEETS_PER_SECTION
+        if 0 <= section_index < len(NOON_SECTION_ORDER):
+            return NOON_SECTION_ORDER[section_index]
+        return None
+    if slot == "night":
+        return "night"
+    if slot in ("midnight", "noon"):
+        return "midnight" if slot == "midnight" else "overall"
+    return None
+
+
+def should_apply_hashtags(slot: str, post_index: int, text: str) -> bool:
+    if HASHTAG_PATTERN.search(text):
+        return True
+    if slot == "morning":
+        return (post_index - 1) % NOON_TWEETS_PER_SECTION == 0
+    return post_index == 1
+
+
+def sky_event_hashtags(sky: dict[str, Any]) -> list[str]:
+    tags: list[str] = []
+    moon_phase = str(sky.get("moon_phase", ""))
+    event_text = " ".join(str(event) for event in sky.get("events", []))
+    if "新月" in moon_phase or "新月" in event_text:
+        tags.append("#新月")
+    if "満月" in moon_phase or "満月" in event_text:
+        tags.append("#満月")
+    if "逆行" in event_text or sky.get("retrogrades"):
+        tags.append("#星の逆行")
+    if "移動" in event_text:
+        tags.append("#星の動き")
+    return tags
+
+
+def hashtag_candidates_for_post(
+    sky: dict[str, Any],
+    slot: str,
+    post_index: int,
+    text: str,
+    trend_tags: list[str],
+) -> list[str]:
+    section_key = section_key_for_post(slot, post_index)
+    base = "#占星術" if "#占星術" in text else "#星読み"
+    month = datetime.now(JST).month
+    candidates = [base]
+    if section_key:
+        candidates.extend(SECTION_HASHTAGS.get(section_key, []))
+    candidates.extend(sky_event_hashtags(sky))
+    candidates.extend(SEASONAL_HASHTAGS_BY_MONTH.get(month, []))
+    candidates.extend(trend_tags)
+
+    if trend_tags and len(candidates) > 1:
+        insert_at = min(2, len(candidates))
+        candidates = candidates[:insert_at] + trend_tags[:1] + candidates[insert_at:]
+
+    return unique_hashtags(candidates)
+
+
+def replace_hashtags(text: str, hashtags: list[str]) -> str:
+    tags = unique_hashtags(hashtags)[: max(1, MAX_HASHTAGS_PER_POST)]
+    if not tags:
+        return trim_tweet(text)
+
+    lines = [line.rstrip() for line in text.strip().splitlines() if line.strip()]
+    link_lines = [line for line in lines if SITE_URL in line]
+    body_lines = [line for line in lines if SITE_URL not in line]
+    body = "\n".join(body_lines)
+    body = HASHTAG_PATTERN.sub("", body)
+    body = "\n".join(" ".join(line.split()) for line in body.splitlines() if line.strip())
+    tag_line = " ".join(tags)
+    link_text = "\n".join(link_lines)
+
+    suffix_parts = [tag_line]
+    if link_text:
+        suffix_parts.append(link_text)
+    suffix = "\n".join(suffix_parts)
+    candidate = f"{body}\n{suffix}".strip() if body else suffix
+    if len(candidate) <= MAX_TWEET_CHARS:
+        return candidate
+
+    available = MAX_TWEET_CHARS - len(suffix) - 2
+    shortened_body = body[: max(0, available)].rstrip()
+    if shortened_body and len(shortened_body) < len(body):
+        shortened_body = f"{shortened_body.rstrip()}…"
+    return f"{shortened_body}\n{suffix}".strip()
+
+
+def apply_dynamic_hashtags(
+    texts: list[str],
+    sky: dict[str, Any],
+    slot: str,
+    trend_tags: list[str] | None = None,
+) -> list[str]:
+    source_trend_tags = trend_tags if trend_tags is not None else trend_hashtags()
+    active_trend_tags = [tag for tag in unique_hashtags(source_trend_tags) if is_safe_trend_hashtag(tag)]
+    tagged: list[str] = []
+    for index, text in enumerate(texts, start=1):
+        if not should_apply_hashtags(slot, index, text):
+            tagged.append(trim_tweet(text))
+            continue
+        hashtags = hashtag_candidates_for_post(sky, slot, index, text, active_trend_tags)
+        tagged.append(replace_hashtags(text, hashtags))
+    return tagged
+
+
 def append_link_to_tweet(text: str) -> str:
     text = trim_tweet(text)
     if SITE_URL in text:
@@ -1837,7 +2104,7 @@ def main(argv: list[str] | None = None) -> None:
     sky = todays_sky(now)
     print(f"[sky] {json.dumps(sky, ensure_ascii=False)}")
 
-    texts = generate_post_texts(sky, slot)
+    texts = apply_dynamic_hashtags(generate_post_texts(sky, slot), sky, slot)
     for index, text in enumerate(texts, start=1):
         print(f"[post:{slot}:{index}/{len(texts)}]\n{text}\n")
 

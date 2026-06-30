@@ -44,7 +44,14 @@ jobs:
           SUPABASE_BUCKET: ${{ secrets.SUPABASE_BUCKET }}
           INSTAGRAM_BUSINESS_ACCOUNT_ID: ${{ secrets.INSTAGRAM_BUSINESS_ACCOUNT_ID }}
           META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+          X_API_KEY: ${{ secrets.X_API_KEY }}
+          X_API_SECRET: ${{ secrets.X_API_SECRET }}
+          X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
+          X_ACCESS_SECRET: ${{ secrets.X_ACCESS_SECRET }}
           SITE_URL: https://hoshiyomi4u.com/m
+          TREND_HASHTAGS: ${{ vars.TREND_HASHTAGS }}
+          ENABLE_X_TRENDS: ${{ vars.ENABLE_X_TRENDS || '0' }}
+          X_TRENDS_WOEID: ${{ vars.X_TRENDS_WOEID || '23424856' }}
           DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
         run: |
           SLOT="${{ github.event.inputs.slot }}"

@@ -1,4 +1,5 @@
 import pathlib
+import os
 import sys
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -14,6 +15,7 @@ from generate_and_post import (
     NOON_TWEETS_PER_SECTION,
     RANKING_CARD_SIZE,
     SITE_URL,
+    apply_dynamic_hashtags,
     build_morning_thread,
     build_noon_thread,
     build_night_thread,
@@ -25,6 +27,7 @@ from generate_and_post import (
     generate_post_texts,
     generate_ranking_card,
     generate_three_fortunes_card,
+    is_safe_trend_hashtag,
     is_duplicate_tweet_response,
     should_skip_late_midnight,
     sign_of,
@@ -149,6 +152,34 @@ class AstrologyHelperTests(unittest.TestCase):
         self.assertTrue(any("牡羊座" in post for post in posts))
         self.assertTrue(any("魚座" in post for post in posts))
         self.assertTrue(all(len(post) <= MAX_TWEET_CHARS for post in posts))
+
+    def test_dynamic_hashtags_add_relevant_trend_and_section_tags(self):
+        sky = {
+            "date": "2026年06月12日",
+            "weekday": "金曜日",
+            "moon_sign": "牡牛座",
+            "moon_phase": "満月直後",
+            "events": ["今日は射手座の満月"],
+            "retrogrades": [],
+            "planet_signs": {
+                "金星": {"sign": "牡牛座"},
+                "木星": {"sign": "蟹座"},
+                "水星": {"sign": "双子座"},
+            },
+        }
+        posts = apply_dynamic_hashtags(build_noon_thread(sky), sky, "morning", trend_tags=["#満月", "#選挙"])
+
+        self.assertIn("#満月", posts[0])
+        self.assertIn("#今日の運勢", posts[0])
+        self.assertIn("#恋愛運", posts[NOON_TWEETS_PER_SECTION])
+        self.assertNotIn("#選挙", "\n".join(posts))
+        self.assertTrue(all(len(post) <= MAX_TWEET_CHARS for post in posts))
+
+    def test_trend_hashtag_safety_filter(self):
+        self.assertTrue(is_safe_trend_hashtag("#満月"))
+        self.assertTrue(is_safe_trend_hashtag("#恋愛運"))
+        self.assertFalse(is_safe_trend_hashtag("#選挙"))
+        self.assertFalse(is_safe_trend_hashtag("#地震"))
 
     def test_morning_slot_outputs_independent_rankings(self):
         sky = {
@@ -301,6 +332,40 @@ class AstrologyHelperTests(unittest.TestCase):
         for path in paths:
             with Image.open(path) as image:
                 self.assertEqual(image.size, RANKING_CARD_SIZE)
+
+    def test_instagram_caption_uses_dynamic_safe_hashtags(self):
+        sky = {
+            "date": "2026年06月12日",
+            "weekday": "金曜日",
+            "moon_sign": "牡牛座",
+            "moon_phase": "満月直後",
+            "events": ["今日は射手座の満月"],
+            "retrogrades": [],
+            "planet_signs": {
+                "金星": {"sign": "牡牛座"},
+                "木星": {"sign": "蟹座"},
+                "水星": {"sign": "双子座"},
+            },
+        }
+        old_trend_hashtags = os.environ.get("TREND_HASHTAGS")
+        old_enable_trends = os.environ.get("ENABLE_X_TRENDS")
+        os.environ["TREND_HASHTAGS"] = "#満月,#選挙,#金運"
+        os.environ["ENABLE_X_TRENDS"] = "0"
+        try:
+            caption = generate_caption(sky, "morning")
+        finally:
+            if old_trend_hashtags is None:
+                os.environ.pop("TREND_HASHTAGS", None)
+            else:
+                os.environ["TREND_HASHTAGS"] = old_trend_hashtags
+            if old_enable_trends is None:
+                os.environ.pop("ENABLE_X_TRENDS", None)
+            else:
+                os.environ["ENABLE_X_TRENDS"] = old_enable_trends
+
+        self.assertIn("#満月", caption)
+        self.assertIn("#HOSHIYOMI", caption)
+        self.assertNotIn("#選挙", caption)
 
     def test_zodiac_ranking_items_include_all_signs(self):
         sky = {
