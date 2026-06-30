@@ -13,15 +13,19 @@ from generate_and_post import (
     RANKING_CARD_SIZE,
     SITE_URL,
     build_morning_thread,
+    build_noon_thread,
     build_night_thread,
     crosses,
     find_font,
     generate_ranking_card,
+    generate_three_fortunes_card,
     is_duplicate_tweet_response,
     should_skip_late_midnight,
     sign_of,
     slot_for,
     text_width,
+    three_fortune_items,
+    three_fortunes_caption,
     wrap_text,
     zodiac_ranking_items,
 )
@@ -113,6 +117,31 @@ class AstrologyHelperTests(unittest.TestCase):
         self.assertIn("魚座", posts[4])
         self.assertTrue(all(len(post) <= MAX_TWEET_CHARS for post in posts))
 
+    def test_build_noon_thread_contains_three_fortunes(self):
+        sky = {
+            "date": "2026年06月12日",
+            "weekday": "金曜日",
+            "moon_sign": "牡牛座",
+            "moon_phase": "新月前の月",
+            "events": [],
+            "retrogrades": ["冥王星(水瓶座)"],
+            "planet_signs": {
+                "金星": {"sign": "牡牛座"},
+                "木星": {"sign": "蟹座"},
+                "水星": {"sign": "双子座"},
+            },
+        }
+        posts = build_noon_thread(sky)
+
+        self.assertEqual(len(posts), 5)
+        self.assertIn(SITE_URL, posts[0])
+        self.assertIn("恋愛", posts[0])
+        self.assertIn("金運", posts[1])
+        self.assertIn("仕事", posts[1])
+        self.assertIn("牡羊座", posts[1])
+        self.assertIn("魚座", posts[4])
+        self.assertTrue(all(len(post) <= MAX_TWEET_CHARS for post in posts))
+
     def test_x_zodiac_threads_vary_by_date(self):
         sky = {
             "date": "2026年06月12日",
@@ -147,6 +176,28 @@ class AstrologyHelperTests(unittest.TestCase):
         self.assertIn("今日やるといいこと", morning)
         self.assertIn("振り返り", night)
 
+    def test_three_fortunes_caption_includes_all_signs(self):
+        sky = {
+            "date": "2026年06月12日",
+            "weekday": "金曜日",
+            "moon_sign": "牡牛座",
+            "moon_phase": "新月前の月",
+            "events": [],
+            "retrogrades": ["冥王星(水瓶座)"],
+            "planet_signs": {
+                "金星": {"sign": "牡牛座"},
+                "木星": {"sign": "蟹座"},
+                "水星": {"sign": "双子座"},
+            },
+        }
+        caption = three_fortunes_caption(sky)
+
+        for sign in ("牡羊座", "牡牛座", "双子座", "蟹座", "獅子座", "乙女座", "天秤座", "蠍座", "射手座", "山羊座", "水瓶座", "魚座"):
+            self.assertIn(sign, caption)
+        self.assertIn("恋愛運", caption)
+        self.assertIn("金運", caption)
+        self.assertIn("仕事運", caption)
+
     def test_instagram_feed_card_image_size(self):
         sky = {
             "date": "2026年06月12日",
@@ -158,6 +209,28 @@ class AstrologyHelperTests(unittest.TestCase):
         }
         output = pathlib.Path("/tmp/hoshiyomi-feed-card-test.jpg")
         path = generate_card(sky, "morning", output, datetime(2026, 6, 12, 8, 0, tzinfo=JST))
+
+        from PIL import Image
+
+        with Image.open(path) as image:
+            self.assertEqual(image.size, CARD_SIZE)
+
+    def test_instagram_noon_card_image_size(self):
+        sky = {
+            "date": "2026年06月12日",
+            "weekday": "金曜日",
+            "moon_sign": "牡牛座",
+            "moon_phase": "新月前の月",
+            "events": [],
+            "retrogrades": ["冥王星(水瓶座)"],
+            "planet_signs": {
+                "金星": {"sign": "牡牛座"},
+                "木星": {"sign": "蟹座"},
+                "水星": {"sign": "双子座"},
+            },
+        }
+        output = pathlib.Path("/tmp/hoshiyomi-noon-card-test.jpg")
+        path = generate_card(sky, "noon", output, datetime(2026, 6, 12, 12, 0, tzinfo=JST))
 
         from PIL import Image
 
@@ -178,6 +251,27 @@ class AstrologyHelperTests(unittest.TestCase):
         self.assertEqual(len(items), 12)
         self.assertEqual({item["sign"] for item in items}, set(("牡羊座", "牡牛座", "双子座", "蟹座", "獅子座", "乙女座", "天秤座", "蠍座", "射手座", "山羊座", "水瓶座", "魚座")))
         self.assertEqual([item["rank"] for item in items], list(range(1, 13)))
+
+    def test_three_fortune_items_include_all_signs_and_domains(self):
+        sky = {
+            "date": "2026年06月12日",
+            "weekday": "金曜日",
+            "moon_sign": "牡牛座",
+            "moon_phase": "新月前の月",
+            "events": [],
+            "retrogrades": ["冥王星(水瓶座)"],
+            "planet_signs": {
+                "金星": {"sign": "牡牛座"},
+                "木星": {"sign": "蟹座"},
+                "水星": {"sign": "双子座"},
+            },
+        }
+        items = three_fortune_items(sky)
+
+        self.assertEqual(len(items), 12)
+        self.assertEqual({item["sign"] for item in items}, set(("牡羊座", "牡牛座", "双子座", "蟹座", "獅子座", "乙女座", "天秤座", "蠍座", "射手座", "山羊座", "水瓶座", "魚座")))
+        for item in items:
+            self.assertEqual(set(item["fortunes"].keys()), {"love", "money", "work"})
 
     def test_ranking_text_wraps_without_ellipsis(self):
         from PIL import Image, ImageDraw
@@ -203,6 +297,28 @@ class AstrologyHelperTests(unittest.TestCase):
         }
         output = pathlib.Path("/tmp/hoshiyomi-ranking-card-test.jpg")
         path = generate_ranking_card(sky, "morning", output, datetime(2026, 6, 12, 8, 0, tzinfo=JST))
+
+        from PIL import Image
+
+        with Image.open(path) as image:
+            self.assertEqual(image.size, RANKING_CARD_SIZE)
+
+    def test_three_fortunes_card_image_size(self):
+        sky = {
+            "date": "2026年06月12日",
+            "weekday": "金曜日",
+            "moon_sign": "牡牛座",
+            "moon_phase": "新月前の月",
+            "events": [],
+            "retrogrades": ["冥王星(水瓶座)"],
+            "planet_signs": {
+                "金星": {"sign": "牡牛座"},
+                "木星": {"sign": "蟹座"},
+                "水星": {"sign": "双子座"},
+            },
+        }
+        output = pathlib.Path("/tmp/hoshiyomi-three-fortunes-card-test.jpg")
+        path = generate_three_fortunes_card(sky, output, datetime(2026, 6, 12, 12, 0, tzinfo=JST))
 
         from PIL import Image
 

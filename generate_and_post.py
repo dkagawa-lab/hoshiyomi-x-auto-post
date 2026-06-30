@@ -288,6 +288,15 @@ def todays_sky(now: datetime | None = None) -> dict[str, Any]:
         if speed < 0:
             retrogrades.append(f"{name}({sign_of(lon)})")
 
+    planet_signs: dict[str, dict[str, str | float | bool]] = {}
+    for planet, name in PLANETS.items():
+        lon, speed = calc(jd_now, planet)
+        planet_signs[name] = {
+            "sign": sign_of(lon),
+            "longitude": round(lon, 2),
+            "retrograde": speed < 0 and planet in RETROGRADE_PLANETS,
+        }
+
     return {
         "date": now.strftime("%Y年%m月%d日"),
         "weekday": f"{WEEKDAYS[now.weekday()]}曜日",
@@ -295,6 +304,7 @@ def todays_sky(now: datetime | None = None) -> dict[str, Any]:
         "moon_phase": phase_name(moon_phase_angle(jd_now)),
         "events": events,
         "retrogrades": retrogrades,
+        "planet_signs": planet_signs,
     }
 
 
@@ -312,7 +322,7 @@ def slot_for(now: datetime | None = None) -> str:
 SLOT_BRIEF = {
     "midnight": "日付が変わった直後の投稿。今日の星の入口として、日付・月星座・月相・あれば天体イベントを静かに告げる。",
     "morning": "朝8時の投稿。今日の星の動きから、12星座別の運気とやるべきことをスレッドで伝える。",
-    "noon": "昼の投稿。占星術の豆知識を、初心者にも分かる言葉で伝える。",
+    "noon": "昼の投稿。星の位置から12星座別の恋愛運・金運・仕事運をスレッドで伝える。",
     "night": "夜22時の投稿。今日の星をふり返り、できた人にもできなかった人にも明日へつながる言葉を伝える。",
 }
 
@@ -414,6 +424,72 @@ SIGN_SHORT_LABELS = {
 }
 
 RANKING_RELATION_ORDER = [0, 4, 8, 2, 6, 10, 1, 5, 9, 3, 7, 11]
+
+FORTUNE_DOMAINS = [
+    {"key": "love", "label": "恋愛運", "planet": "金星", "short": "恋愛", "symbol": "恋"},
+    {"key": "money", "label": "金運", "planet": "木星", "short": "金運", "symbol": "金"},
+    {"key": "work", "label": "仕事運", "planet": "水星", "short": "仕事", "symbol": "仕"},
+]
+
+FORTUNE_SCORE_BY_DIFF = {
+    0: 5,
+    4: 5,
+    8: 5,
+    2: 4,
+    6: 4,
+    10: 4,
+    1: 3,
+    5: 3,
+    9: 3,
+    3: 2,
+    7: 2,
+    11: 2,
+}
+
+FORTUNE_COPY = {
+    "love": {
+        0: ("本命運", "素直な好意が伝わりやすい"),
+        1: ("温め運", "急がず距離を縮める"),
+        2: ("会話運", "短い連絡がきっかけになる"),
+        3: ("安心運", "弱さを見せるほど近づく"),
+        4: ("ときめき運", "楽しい誘いが流れを作る"),
+        5: ("調整運", "相手に合わせすぎない"),
+        6: ("対人運", "相手の反応をよく見る"),
+        7: ("本音運", "嫉妬や不安の奥を読む"),
+        8: ("進展運", "いつもと違う誘い方が効く"),
+        9: ("現実運", "将来の話を軽く出してみる"),
+        10: ("縁運", "友人経由の出会いに目を向ける"),
+        11: ("余白運", "追いすぎず相手の余地を残す"),
+    },
+    "money": {
+        0: ("入る運", "得意なことで価値を受け取る"),
+        1: ("管理運", "小さな固定費を見直す"),
+        2: ("情報運", "買う前に比較すると残る"),
+        3: ("守り運", "生活費の安心ラインを整える"),
+        4: ("楽しみ運", "好きなことへの投資が活きる"),
+        5: ("整理運", "使途不明の出費を一つ止める"),
+        6: ("交渉運", "条件を確認してから動く"),
+        7: ("共有運", "借り貸しや共同管理を明確に"),
+        8: ("拡大運", "学びや移動にお金を回す"),
+        9: ("堅実運", "長く使うものを選ぶ"),
+        10: ("紹介運", "人からの情報に収穫あり"),
+        11: ("節約運", "気分買いを一晩寝かせる"),
+    },
+    "work": {
+        0: ("主役運", "自分の案を先に出す"),
+        1: ("準備運", "資料や段取りを整える"),
+        2: ("発信運", "確認や共有を早めにする"),
+        3: ("基盤運", "作業環境を一つ整える"),
+        4: ("評価運", "得意な役割で前に出る"),
+        5: ("実務運", "細かいタスクから片づける"),
+        6: ("協力運", "相手の目的を聞いて動く"),
+        7: ("集中運", "深い作業を先に確保する"),
+        8: ("挑戦運", "新しいやり方を試してみる"),
+        9: ("達成運", "期限と数字を先に確認する"),
+        10: ("チーム運", "相談先を一つ増やす"),
+        11: ("調整運", "詰め込みすぎを減らす"),
+    },
+}
 
 
 def find_font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
@@ -539,6 +615,100 @@ def zodiac_ranking_items(sky: dict[str, Any], slot: str) -> list[dict[str, str |
     return items
 
 
+def planet_sign_from_sky(sky: dict[str, Any], planet_name: str) -> str:
+    planet_signs = sky.get("planet_signs", {})
+    if isinstance(planet_signs, dict):
+        value = planet_signs.get(planet_name)
+        if isinstance(value, dict) and isinstance(value.get("sign"), str):
+            return str(value["sign"])
+        if isinstance(value, str):
+            return value
+    return str(sky.get("moon_sign", "牡羊座"))
+
+
+def fortune_detail_for_sign(sky: dict[str, Any], sign: str, domain: dict[str, str]) -> dict[str, str | int]:
+    planet_sign = planet_sign_from_sky(sky, domain["planet"])
+    diff = (SIGN_INDEX[sign] - SIGN_INDEX[planet_sign]) % 12
+    tone, comment = FORTUNE_COPY[domain["key"]][diff]
+    return {
+        "domain": domain["key"],
+        "label": domain["label"],
+        "short": domain["short"],
+        "planet": domain["planet"],
+        "planet_sign": planet_sign,
+        "tone": tone,
+        "comment": comment,
+        "score": FORTUNE_SCORE_BY_DIFF[diff],
+        "order": RANKING_RELATION_ORDER.index(diff),
+    }
+
+
+def three_fortune_items(sky: dict[str, Any]) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    for sign in SIGNS:
+        fortunes = {domain["key"]: fortune_detail_for_sign(sky, sign, domain) for domain in FORTUNE_DOMAINS}
+        dominant = max(fortunes.values(), key=lambda item: (int(item["score"]), -int(item["order"])))
+        items.append({"sign": sign, "fortunes": fortunes, "dominant": dominant})
+    return items
+
+
+def fortune_domain_rankings(sky: dict[str, Any], domain_key: str) -> list[dict[str, Any]]:
+    items = three_fortune_items(sky)
+
+    def rank_key(item: dict[str, Any]) -> tuple[int, int, int]:
+        fortune = item["fortunes"][domain_key]
+        return (-int(fortune["score"]), int(fortune["order"]), SIGN_INDEX[item["sign"]])
+
+    return sorted(items, key=rank_key)
+
+
+def three_fortune_overview(sky: dict[str, Any]) -> str:
+    parts = []
+    for domain in FORTUNE_DOMAINS:
+        parts.append(f"{domain['short']}={domain['planet']}{planet_sign_from_sky(sky, domain['planet'])}")
+    return " / ".join(parts)
+
+
+def format_three_fortune_line(item: dict[str, Any]) -> str:
+    sign = item["sign"]
+    fortunes = item["fortunes"]
+    dominant = item["dominant"]
+    return (
+        f"{sign}: "
+        f"恋愛{fortunes['love']['tone']}・"
+        f"金運{fortunes['money']['tone']}・"
+        f"仕事{fortunes['work']['tone']}。"
+        f"{dominant['short']}は{dominant['comment']}。"
+    )
+
+
+def build_noon_thread(sky: dict[str, Any]) -> list[str]:
+    overview_variants = [
+        f"星の位置から見る3大運勢。{three_fortune_overview(sky)}。恋愛・お金・仕事の流れを、太陽星座別に見ていきます。#星読み",
+        f"昼の星読み。今日は{three_fortune_overview(sky)}を軸に、恋愛運・金運・仕事運を12星座別で読みます。#占星術",
+        f"12星座だけでは見えにくい、今日の3大運勢。{three_fortune_overview(sky)}。恋愛/金運/仕事の使いどころです。#星読み",
+    ]
+    overview = overview_variants[variation_index(sky, "noon", "three-fortune-overview", len(overview_variants))]
+    posts = [append_link_to_tweet(overview)]
+    items_by_sign = {item["sign"]: item for item in three_fortune_items(sky)}
+    for group in SIGN_GROUPS:
+        lines = [format_three_fortune_line(items_by_sign[sign]) for sign in group]
+        posts.append(trim_tweet("\n".join(lines)))
+    return posts
+
+
+def three_fortunes_caption(sky: dict[str, Any]) -> str:
+    lines = [format_three_fortune_line(item).replace(":", "：", 1) for item in three_fortune_items(sky)]
+    return (
+        f"{sky['date']}の3大運勢。\n"
+        f"{three_fortune_overview(sky)}。\n\n"
+        "星の位置から、恋愛運・金運・仕事運を太陽星座別に読みます。\n"
+        "今日どこに力を入れると流れが開きやすいか、気になる星座から見てください。\n\n"
+        + "\n".join(lines)
+        + f"\n\n出生図から深く読むならプロフィールへ。\n{SITE_URL}\n\n#星読み #占星術 #HOSHIYOMI"
+    )
+
+
 def create_ranking_background(seed: str) -> Image.Image:
     width, height = RANKING_CARD_SIZE
     image = Image.new("RGB", RANKING_CARD_SIZE, (9, 13, 34))
@@ -633,6 +803,80 @@ def generate_ranking_card(
         note = "詳しい星座別の振り返りは、この投稿のスレッドへ。"
     draw_centered(draw, 1236, note, small_font, pale)
     draw_centered(draw, 1280, "hoshiyomi4u.com", small_font, gold)
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    image.save(output_path, quality=92, optimize=True)
+    return output_path
+
+
+def generate_three_fortunes_card(
+    sky: dict[str, Any],
+    output_path: Path,
+    now: datetime | None = None,
+) -> Path:
+    now = now or datetime.now(JST)
+    image = create_ranking_background(f"{sky['date']}-three-fortunes")
+    draw = ImageDraw.Draw(image)
+
+    brand_font = find_font(46)
+    small_font = find_font(23)
+    title_font = find_font(55)
+    domain_font = find_font(31)
+    rank_font = find_font(23)
+    sign_font = find_font(26)
+    body_font = find_font(18)
+    foot_font = find_font(24)
+
+    gold = (232, 199, 121)
+    pale = (248, 236, 192)
+    white = (248, 246, 235)
+    muted = (187, 181, 206)
+    border = (88, 80, 132)
+    panel = (17, 20, 52)
+    accent = (178, 135, 79)
+
+    draw_centered(draw, 48, "HOSHIYOMI", brand_font, gold)
+    draw_centered(draw, 104, f"{sky['date']} / 星で見る3大運勢", small_font, muted)
+    draw_centered(draw, 154, "恋愛運・金運・仕事運", title_font, pale)
+    draw_centered_wrapped(draw, 222, three_fortune_overview(sky), small_font, gold, 940)
+
+    column_w = 304
+    gap = 26
+    start_x = (RANKING_CARD_SIZE[0] - column_w * 3 - gap * 2) // 2
+    top_y = 306
+    domain_colors = {
+        "love": (225, 151, 180),
+        "money": (232, 199, 121),
+        "work": (144, 192, 233),
+    }
+
+    for index, domain in enumerate(FORTUNE_DOMAINS):
+        x = start_x + index * (column_w + gap)
+        domain_key = domain["key"]
+        color = domain_colors[domain_key]
+        draw.rounded_rectangle((x, top_y, x + column_w, 1100), radius=30, fill=panel, outline=border, width=2)
+        draw.rounded_rectangle((x + 18, top_y + 18, x + column_w - 18, top_y + 86), radius=22, fill=(24, 28, 67), outline=color, width=2)
+        draw.text((x + 36, top_y + 33), str(domain["label"]), font=domain_font, fill=color)
+        draw.text(
+            (x + 36, top_y + 92),
+            f"{domain['planet']}が{planet_sign_from_sky(sky, domain['planet'])}",
+            font=small_font,
+            fill=muted,
+        )
+
+        for rank, item in enumerate(fortune_domain_rankings(sky, domain_key)[:4], start=1):
+            fortune = item["fortunes"][domain_key]
+            y = top_y + 146 + (rank - 1) * 148
+            draw.rounded_rectangle((x + 18, y, x + column_w - 18, y + 126), radius=20, fill=(13, 17, 45), outline=(58, 56, 98), width=1)
+            draw.rectangle((x + 18, y, x + 23, y + 126), fill=color)
+            draw.text((x + 36, y + 18), f"{rank}位", font=rank_font, fill=gold)
+            draw.text((x + 92, y + 16), str(item["sign"]), font=sign_font, fill=white)
+            draw.text((x + 36, y + 54), str(fortune["tone"]), font=rank_font, fill=pale)
+            draw_wrapped_text(draw, x + 36, y + 84, str(fortune["comment"]), body_font, muted, column_w - 72, 4)
+
+    draw.rounded_rectangle((104, 1140, 976, 1218), radius=26, fill=(12, 16, 42), outline=border, width=1)
+    draw_centered(draw, 1162, "全12星座の詳しい運勢は、この投稿のスレッドへ。", foot_font, pale)
+    draw_centered(draw, 1278, "hoshiyomi4u.com", foot_font, gold)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     image.save(output_path, quality=92, optimize=True)
@@ -917,6 +1161,8 @@ def generate_text(sky: dict[str, Any], slot: str) -> str:
 def generate_post_texts(sky: dict[str, Any], slot: str) -> list[str]:
     if slot == "morning":
         return generate_morning_thread(sky)
+    if slot == "noon":
+        return build_noon_thread(sky)
     if slot == "night":
         return generate_night_thread(sky)
     return [generate_text(sky, slot)]
@@ -1077,25 +1323,29 @@ def main(argv: list[str] | None = None) -> None:
     for index, text in enumerate(texts, start=1):
         print(f"[post:{slot}:{index}/{len(texts)}]\n{text}\n")
 
-    ranking_card_path: Path | None = None
+    social_card_path: Path | None = None
     if slot in ("morning", "night"):
         filename = f"{now.strftime('%Y%m%d-%H%M%S')}-{slot}-ranking.jpg"
-        ranking_card_path = generate_ranking_card(sky, slot, OUTPUT_DIR / filename, now)
-        print(f"[x:{slot}:ranking_image] {ranking_card_path}")
+        social_card_path = generate_ranking_card(sky, slot, OUTPUT_DIR / filename, now)
+        print(f"[x:{slot}:ranking_image] {social_card_path}")
+    elif slot == "noon":
+        filename = f"{now.strftime('%Y%m%d-%H%M%S')}-{slot}-three-fortunes.jpg"
+        social_card_path = generate_three_fortunes_card(sky, OUTPUT_DIR / filename, now)
+        print(f"[x:{slot}:three_fortunes_image] {social_card_path}")
 
     if os.environ.get("DRY_RUN") == "1":
         print("[dry-run] skipped posting to X")
         return
 
-    ranking_media_id: str | None = None
-    if ranking_card_path:
-        ranking_media_id = upload_media_to_x(ranking_card_path)
-        print(f"[x:media_id] {ranking_media_id}")
+    social_media_id: str | None = None
+    if social_card_path:
+        social_media_id = upload_media_to_x(social_card_path)
+        print(f"[x:media_id] {social_media_id}")
 
     results: list[dict[str, Any]] = []
     reply_to_tweet_id: str | None = None
     for index, text in enumerate(texts, start=1):
-        media_ids = [ranking_media_id] if index == 1 and ranking_media_id else None
+        media_ids = [social_media_id] if index == 1 and social_media_id else None
         result = post_to_x(text, reply_to_tweet_id, media_ids=media_ids)
         results.append(result)
         if result.get("duplicate"):

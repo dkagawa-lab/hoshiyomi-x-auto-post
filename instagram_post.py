@@ -32,6 +32,7 @@ from generate_and_post import (
     SIGN_INDEX,
     calc,
     generate_ranking_card,
+    generate_three_fortunes_card,
     jd_from,
     should_skip_late_midnight,
     moon_theme,
@@ -41,6 +42,7 @@ from generate_and_post import (
     slot_for,
     style_profile,
     sky_focus_sentence,
+    three_fortunes_caption,
     todays_sky,
     varied_sign_guidance_line,
     varied_sign_reflection_line,
@@ -65,14 +67,14 @@ FONT_CANDIDATES = [
 CAPTION_BRIEF = {
     "midnight": "日付が変わった直後の投稿。今日の星の入口として、日付・月星座・月相を静かに伝える。",
     "morning": "朝の投稿。今日の星の動きから、12星座別の運気とやるべきことを伝える。",
-    "noon": "昼の投稿。占星術の豆知識を今日の星と絡めて伝える。",
+    "noon": "昼の投稿。星の位置から12星座別の恋愛運・金運・仕事運を伝える。",
     "night": "夜の投稿。今日の星をふり返り、12星座別にできたこと・できなかった時の受け止め方を伝える。",
 }
 
 CAPTION_TEMPLATES = {
     "midnight": "{date}。日が変わりました。\n月は{moon_sign}、{moon_phase}。\n{event_line}今日の鍵は「{theme}」。予定を増やす前に、心の向きを一つ決めておくと流れを受け取りやすい日です。\n\n#星読み #占星術 #HOSHIYOMI",
     "morning": "{date}の月は{moon_sign}。{moon_phase}の流れです。\n{event_line}今日は「{theme}」を意識して、反応を急がず、自分のペースに戻ることから始めてください。\n\n#星読み #占星術 #HOSHIYOMI",
-    "noon": "いま月は{moon_sign}にあります。\n月は約2.5日ごとに星座を移り、同じ出来事への反応の出方を少しずつ変えていきます。今日は「{theme}」を観察すると、午後の選び方が整いやすくなります。\n\n#星読み #占星術 #HOSHIYOMI",
+    "noon": "{date}の3大運勢。\n恋愛運・金運・仕事運を、今の星の位置から12星座別に読みます。\n太陽星座を目安に、今日どこへ力を注ぐか見てください。\n\n#星読み #占星術 #HOSHIYOMI",
     "night": "今日もおつかれさまでした。\n月は{moon_sign}、{moon_phase}。\n{event_line}うまくできたことだけでなく、引っかかった感情にも明日のヒントがあります。\n\n#星読み #占星術 #HOSHIYOMI",
 }
 
@@ -568,6 +570,8 @@ def generate_card(sky: dict[str, Any], slot: str, output_path: Path, now: dateti
     now = now or datetime.now(JST)
     if slot in ("morning", "night"):
         return generate_ranking_card(sky, slot, output_path, now)
+    if slot == "noon":
+        return generate_three_fortunes_card(sky, output_path, now)
 
     image = create_background(f"{sky['date']}-{slot}")
     draw = ImageDraw.Draw(image)
@@ -608,6 +612,8 @@ def generate_card(sky: dict[str, Any], slot: str, output_path: Path, now: dateti
 def fallback_caption(sky: dict[str, Any], slot: str) -> str:
     if slot in ("morning", "night"):
         return zodiac_caption(sky, slot)
+    if slot == "noon":
+        return three_fortunes_caption(sky)
     return CAPTION_TEMPLATES[slot].format(
         event_line=primary_event_sentence(sky),
         theme=moon_theme(sky),
@@ -678,6 +684,9 @@ def extract_claude_text(payload: dict[str, Any]) -> str:
 
 
 def generate_caption(sky: dict[str, Any], slot: str) -> str:
+    if slot == "noon":
+        return three_fortunes_caption(sky)
+
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
         return fallback_caption(sky, slot)
