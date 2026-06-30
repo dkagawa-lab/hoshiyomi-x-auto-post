@@ -2,9 +2,8 @@ name: HOSHIYOMI Instagram story auto post
 
 on:
   schedule:
-    # UTC. Runs at 08:10 / 12:40 / 22:10 JST.
+    # UTC. Runs at 08:10 / 22:10 JST.
     - cron: "10 23 * * *"
-    - cron: "40 3 * * *"
     - cron: "10 13 * * *"
   workflow_dispatch:
     inputs:
@@ -50,7 +49,6 @@ jobs:
           if [ -z "$SLOT" ]; then
             case "${{ github.event.schedule }}" in
               "10 23 * * *") SLOT="morning" ;;
-              "40 3 * * *") SLOT="noon" ;;
               "10 13 * * *") SLOT="night" ;;
             esac
           fi

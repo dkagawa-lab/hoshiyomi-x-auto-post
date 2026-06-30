@@ -321,8 +321,8 @@ def slot_for(now: datetime | None = None) -> str:
 
 SLOT_BRIEF = {
     "midnight": "日付が変わった直後の投稿。今日の星の入口として、日付・月星座・月相・あれば天体イベントを静かに告げる。",
-    "morning": "朝8時の投稿。今日の星の動きから、12星座別の運気とやるべきことをスレッドで伝える。",
-    "noon": "昼の投稿。星の位置から12星座別の恋愛運・金運・仕事運をスレッドで伝える。",
+    "morning": "朝8時の投稿。星の位置から総合運・恋愛運・金運・仕事運を独立したランキングスレッドで伝える。",
+    "noon": "昼の投稿。月星座や天体イベントを短い星読みメモとして伝える。",
     "night": "夜22時の投稿。今日の星をふり返り、できた人にもできなかった人にも明日へつながる言葉を伝える。",
 }
 
@@ -776,21 +776,21 @@ def format_fortune_ranking_line(item: dict[str, Any], section_key: str) -> str:
 def noon_section_header(sky: dict[str, Any], section_key: str) -> str:
     if section_key == "overall":
         variants = [
-            f"昼の星読み。まずは総合運ランキング。{three_fortune_overview(sky)}。恋愛・金運・仕事を合わせて、今日の流れが強い順に見ます。#星読み",
+            f"朝の星読み。まずは総合運ランキング。{three_fortune_overview(sky)}。恋愛・金運・仕事を合わせて、今日の流れが強い順に見ます。#星読み",
             f"今日の総合運ランキング。{three_fortune_overview(sky)}。3つの運気を合わせ、動きやすい星座から順に読みます。#占星術",
             f"12星座別、今日の総合運。{three_fortune_overview(sky)}。恋愛・お金・仕事の重なりから順位を出しました。#星読み",
         ]
-        text = variants[variation_index(sky, "noon", "overall-header", len(variants))]
+        text = variants[variation_index(sky, "morning", "overall-header", len(variants))]
         return append_link_to_tweet(text)
 
     domain = FORTUNE_DOMAIN_BY_KEY[section_key]
     planet_sign = planet_sign_from_sky(sky, domain["planet"])
     variants = [
         f"{domain['label']}ランキング。{domain['planet']}は{planet_sign}。太陽星座を目安に、今日の{domain['short']}の動き方を見ていきます。#星読み",
-        f"続いて{domain['label']}。{domain['planet']}が{planet_sign}にある今日、流れに乗りやすい星座から順に読みます。#占星術",
+        f"今日の{domain['label']}。{domain['planet']}が{planet_sign}にある今日、流れに乗りやすい星座から順に読みます。#占星術",
         f"今日の{domain['label']}。鍵になる天体は{domain['planet']}、位置は{planet_sign}。12星座別に使いどころを見ます。#星読み",
     ]
-    return trim_tweet(variants[variation_index(sky, "noon", f"{section_key}-header", len(variants))])
+    return trim_tweet(variants[variation_index(sky, "morning", f"{section_key}-header", len(variants))])
 
 
 def build_noon_thread(sky: dict[str, Any]) -> list[str]:
@@ -1355,9 +1355,9 @@ def generate_text(sky: dict[str, Any], slot: str) -> str:
 
 def generate_post_texts(sky: dict[str, Any], slot: str) -> list[str]:
     if slot == "morning":
-        return generate_morning_thread(sky)
-    if slot == "noon":
         return build_noon_thread(sky)
+    if slot == "noon":
+        return [generate_text(sky, slot)]
     if slot == "night":
         return generate_night_thread(sky)
     return [generate_text(sky, slot)]
@@ -1519,12 +1519,7 @@ def main(argv: list[str] | None = None) -> None:
         print(f"[post:{slot}:{index}/{len(texts)}]\n{text}\n")
 
     media_paths_by_post_index: dict[int, Path] = {}
-    if slot in ("morning", "night"):
-        filename = f"{now.strftime('%Y%m%d-%H%M%S')}-{slot}-ranking.jpg"
-        path = generate_ranking_card(sky, slot, OUTPUT_DIR / filename, now)
-        media_paths_by_post_index[1] = path
-        print(f"[x:{slot}:ranking_image] {path}")
-    elif slot == "noon":
+    if slot == "morning":
         timestamp = now.strftime("%Y%m%d-%H%M%S")
         for section_index, section_key in enumerate(NOON_SECTION_ORDER):
             filename = f"{timestamp}-{slot}-{section_key}.jpg"
@@ -1532,6 +1527,11 @@ def main(argv: list[str] | None = None) -> None:
             post_index = section_index * NOON_TWEETS_PER_SECTION + 1
             media_paths_by_post_index[post_index] = path
             print(f"[x:{slot}:{section_key}_image:{post_index}] {path}")
+    elif slot == "night":
+        filename = f"{now.strftime('%Y%m%d-%H%M%S')}-{slot}-ranking.jpg"
+        path = generate_ranking_card(sky, slot, OUTPUT_DIR / filename, now)
+        media_paths_by_post_index[1] = path
+        print(f"[x:{slot}:ranking_image] {path}")
 
     if os.environ.get("DRY_RUN") == "1":
         print("[dry-run] skipped posting to X")
@@ -1546,7 +1546,7 @@ def main(argv: list[str] | None = None) -> None:
     results: list[dict[str, Any]] = []
     reply_to_tweet_id: str | None = None
     for index, text in enumerate(texts, start=1):
-        if slot == "noon" and index in media_paths_by_post_index:
+        if slot == "morning" and index in media_paths_by_post_index:
             reply_to_tweet_id = None
         media_id = media_ids_by_post_index.get(index)
         media_ids = [media_id] if media_id else None

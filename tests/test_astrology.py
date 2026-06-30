@@ -21,6 +21,7 @@ from generate_and_post import (
     find_font,
     fortune_ranking_items,
     generate_fortune_ranking_card,
+    generate_post_texts,
     generate_ranking_card,
     generate_three_fortunes_card,
     is_duplicate_tweet_response,
@@ -33,7 +34,7 @@ from generate_and_post import (
     wrap_text,
     zodiac_ranking_items,
 )
-from instagram_post import CARD_SIZE, InstagramGraphAPIError, generate_card, is_instagram_media_download_error, zodiac_caption
+from instagram_post import CARD_SIZE, InstagramGraphAPIError, generate_caption, generate_card, generate_card_paths, is_instagram_media_download_error, zodiac_caption
 from instagram_story import STORY_SIZE, generate_story, story_body
 
 
@@ -148,6 +149,28 @@ class AstrologyHelperTests(unittest.TestCase):
         self.assertTrue(any("魚座" in post for post in posts))
         self.assertTrue(all(len(post) <= MAX_TWEET_CHARS for post in posts))
 
+    def test_morning_slot_outputs_independent_rankings(self):
+        sky = {
+            "date": "2026年06月12日",
+            "weekday": "金曜日",
+            "moon_sign": "牡牛座",
+            "moon_phase": "新月前の月",
+            "events": [],
+            "retrogrades": ["冥王星(水瓶座)"],
+            "planet_signs": {
+                "金星": {"sign": "牡牛座"},
+                "木星": {"sign": "蟹座"},
+                "水星": {"sign": "双子座"},
+            },
+        }
+        posts = generate_post_texts(sky, "morning")
+
+        self.assertEqual(len(posts), len(NOON_SECTION_ORDER) * NOON_TWEETS_PER_SECTION)
+        self.assertIn("総合", posts[0])
+        self.assertIn("恋愛", posts[NOON_TWEETS_PER_SECTION])
+        self.assertIn("金運", posts[NOON_TWEETS_PER_SECTION * 2])
+        self.assertIn("仕事", posts[NOON_TWEETS_PER_SECTION * 3])
+
     def test_x_zodiac_threads_vary_by_date(self):
         sky = {
             "date": "2026年06月12日",
@@ -243,6 +266,40 @@ class AstrologyHelperTests(unittest.TestCase):
 
         with Image.open(path) as image:
             self.assertEqual(image.size, CARD_SIZE)
+
+    def test_instagram_morning_generates_four_fortune_cards(self):
+        sky = {
+            "date": "2026年06月12日",
+            "weekday": "金曜日",
+            "moon_sign": "牡牛座",
+            "moon_phase": "新月前の月",
+            "events": [],
+            "retrogrades": ["冥王星(水瓶座)"],
+            "planet_signs": {
+                "金星": {"sign": "牡牛座"},
+                "木星": {"sign": "蟹座"},
+                "水星": {"sign": "双子座"},
+            },
+        }
+        paths = generate_card_paths(
+            sky,
+            "morning",
+            pathlib.Path("/tmp/hoshiyomi-morning-carousel-test"),
+            datetime(2026, 6, 12, 8, 0, tzinfo=JST),
+        )
+        caption = generate_caption(sky, "morning")
+
+        self.assertEqual(len(paths), len(NOON_SECTION_ORDER))
+        self.assertIn("総合運", caption)
+        self.assertIn("恋愛運", caption)
+        self.assertIn("金運", caption)
+        self.assertIn("仕事運", caption)
+
+        from PIL import Image
+
+        for path in paths:
+            with Image.open(path) as image:
+                self.assertEqual(image.size, RANKING_CARD_SIZE)
 
     def test_zodiac_ranking_items_include_all_signs(self):
         sky = {
@@ -407,7 +464,7 @@ class AstrologyHelperTests(unittest.TestCase):
 
         with Image.open(path) as image:
             self.assertEqual(image.size, STORY_SIZE)
-        self.assertIn("12星座別", story_body(sky, "morning"))
+        self.assertIn("総合", story_body(sky, "morning"))
 
 
 if __name__ == "__main__":

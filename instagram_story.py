@@ -45,15 +45,15 @@ OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR", "out"))
 
 STORY_TITLES = {
     "midnight": "今日の星が開く",
-    "morning": "今日の星の流れ",
-    "noon": "4つの運勢ランキング",
+    "morning": "4つの運勢ランキング",
+    "noon": "昼の星読み",
     "night": "今日の星を振り返る",
 }
 
 STORY_CTA = {
     "midnight": "今日の星読みをチェック",
-    "morning": "12星座別の運気はフィード投稿へ",
-    "noon": "総合・恋愛・金運・仕事運はフィードへ",
+    "morning": "総合・恋愛・金運・仕事運はフィードへ",
+    "noon": "午後の星読みはフィード投稿へ",
     "night": "12星座別の振り返りはフィード投稿へ",
 }
 
@@ -113,8 +113,8 @@ def story_body(sky: dict[str, Any], slot: str) -> str:
     focus = sky_focus_sentence(sky)
     if slot == "morning":
         return (
-            f"{focus}今日は「{moon_theme(sky)}」が鍵。\n"
-            "12星座別の詳しい流れは、最新投稿で。"
+            "今日をどう過ごすかを、\n"
+            "総合・恋愛・金運・仕事運で読みます。"
         )
     if slot == "night":
         return (
@@ -123,8 +123,8 @@ def story_body(sky: dict[str, Any], slot: str) -> str:
         )
     if slot == "noon":
         return (
-            "総合・恋愛・お金・仕事の流れを、\n"
-            "12星座別ランキングで読みます。"
+            f"{focus}午後は「{moon_theme(sky)}」を、\n"
+            "少しだけ意識して過ごしてみて。"
         )
     event = primary_event_sentence(sky)
     return (

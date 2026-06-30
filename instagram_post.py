@@ -67,22 +67,22 @@ FONT_CANDIDATES = [
 
 CAPTION_BRIEF = {
     "midnight": "日付が変わった直後の投稿。今日の星の入口として、日付・月星座・月相を静かに伝える。",
-    "morning": "朝の投稿。今日の星の動きから、12星座別の運気とやるべきことを伝える。",
-    "noon": "昼の投稿。星の位置から12星座別の恋愛運・金運・仕事運を伝える。",
+    "morning": "朝の投稿。今日一日を過ごすための総合運・恋愛運・金運・仕事運ランキングを伝える。",
+    "noon": "昼の投稿。月星座や天体イベントを短い星読みメモとして伝える。",
     "night": "夜の投稿。今日の星をふり返り、12星座別にできたこと・できなかった時の受け止め方を伝える。",
 }
 
 CAPTION_TEMPLATES = {
     "midnight": "{date}。日が変わりました。\n月は{moon_sign}、{moon_phase}。\n{event_line}今日の鍵は「{theme}」。予定を増やす前に、心の向きを一つ決めておくと流れを受け取りやすい日です。\n\n#星読み #占星術 #HOSHIYOMI",
-    "morning": "{date}の月は{moon_sign}。{moon_phase}の流れです。\n{event_line}今日は「{theme}」を意識して、反応を急がず、自分のペースに戻ることから始めてください。\n\n#星読み #占星術 #HOSHIYOMI",
-    "noon": "{date}の星座別ランキング。\n総合運・恋愛運・金運・仕事運を、今の星の位置から12星座別に読みます。\n太陽星座を目安に、気になるテーマから見てください。\n\n#星読み #占星術 #HOSHIYOMI",
+    "morning": "{date}の星座別ランキング。\n総合運・恋愛運・金運・仕事運を、今の星の位置から12星座別に読みます。\n太陽星座を目安に、気になるテーマから見てください。\n\n#星読み #占星術 #HOSHIYOMI",
+    "noon": "{date}の月は{moon_sign}。{moon_phase}の流れです。\n{event_line}午後は「{theme}」を意識して、反応を急がず、自分のペースに戻ることから始めてください。\n\n#星読み #占星術 #HOSHIYOMI",
     "night": "今日もおつかれさまでした。\n月は{moon_sign}、{moon_phase}。\n{event_line}うまくできたことだけでなく、引っかかった感情にも明日のヒントがあります。\n\n#星読み #占星術 #HOSHIYOMI",
 }
 
 IMAGE_MESSAGES = {
     "midnight": "今日の星の入口。\n月のサインと天体の動きから、一日の質感を読みます。",
-    "morning": "朝の星読み。\n今日の空から、12星座別の使い方まで落とし込みます。",
-    "noon": "昼の星読みランキング。\n総合・恋愛・金運・仕事の流れを12星座別に読みます。",
+    "morning": "朝の星読みランキング。\n総合・恋愛・金運・仕事の流れを12星座別に読みます。",
+    "noon": "昼の星読みメモ。\n午後の過ごし方を月の流れから読みます。",
     "night": "夜の振り返り。\n今日の星を、明日の選び方へつなげます。",
 }
 
@@ -101,8 +101,8 @@ PLANET_MARKS = {
 
 SLOT_TITLES = {
     "midnight": "今日の星図",
-    "morning": "朝の星読み",
-    "noon": "星座別ランキング",
+    "morning": "星座別ランキング",
+    "noon": "昼の星読み",
     "night": "夜の振り返り",
 }
 
@@ -571,8 +571,6 @@ def generate_card(sky: dict[str, Any], slot: str, output_path: Path, now: dateti
     now = now or datetime.now(JST)
     if slot in ("morning", "night"):
         return generate_ranking_card(sky, slot, output_path, now)
-    if slot == "noon":
-        return generate_fortune_ranking_card(sky, "overall", output_path, now)
 
     image = create_background(f"{sky['date']}-{slot}")
     draw = ImageDraw.Draw(image)
@@ -613,7 +611,7 @@ def generate_card(sky: dict[str, Any], slot: str, output_path: Path, now: dateti
 def generate_card_paths(sky: dict[str, Any], slot: str, output_dir: Path, now: datetime | None = None) -> list[Path]:
     now = now or datetime.now(JST)
     timestamp = now.strftime("%Y%m%d-%H%M%S")
-    if slot == "noon":
+    if slot == "morning":
         return [
             generate_fortune_ranking_card(
                 sky,
@@ -627,10 +625,10 @@ def generate_card_paths(sky: dict[str, Any], slot: str, output_dir: Path, now: d
 
 
 def fallback_caption(sky: dict[str, Any], slot: str) -> str:
-    if slot in ("morning", "night"):
-        return zodiac_caption(sky, slot)
-    if slot == "noon":
+    if slot == "morning":
         return three_fortunes_caption(sky)
+    if slot == "night":
+        return zodiac_caption(sky, slot)
     return CAPTION_TEMPLATES[slot].format(
         event_line=primary_event_sentence(sky),
         theme=moon_theme(sky),
@@ -701,7 +699,7 @@ def extract_claude_text(payload: dict[str, Any]) -> str:
 
 
 def generate_caption(sky: dict[str, Any], slot: str) -> str:
-    if slot == "noon":
+    if slot == "morning":
         return three_fortunes_caption(sky)
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
