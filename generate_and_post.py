@@ -534,6 +534,225 @@ FORTUNE_COPY = {
     },
 }
 
+FORTUNE_COPY_VARIANTS = {
+    "love": {
+        0: [
+            ("本命運", "気持ちは濁さず短く伝える", "返事を急かさず、言葉の余韻を残して。"),
+            ("直球運", "好意を隠しすぎない", "軽い誘いより、会いたい理由を一つ添えて。"),
+            ("主役運", "あなたから空気を温める", "待つより一言。素直さが印象に残ります。"),
+        ],
+        1: [
+            ("温め運", "急がず距離を縮める", "長文より、相手が返しやすい一言を。"),
+            ("育てる運", "小さな接点を重ねる", "今日決め切らず、次の会話の種を残して。"),
+            ("観察運", "反応の温度を見ながら進む", "押すより合わせる方が、自然に近づけます。"),
+        ],
+        2: [
+            ("会話運", "短い連絡がきっかけになる", "近況を聞くより、具体的な話題を一つ。"),
+            ("言葉運", "やわらかな質問が効く", "答えやすい聞き方にすると会話が続きます。"),
+            ("接点運", "偶然を会話に変える", "スタンプだけで終わらせず、ひと言添えて。"),
+        ],
+        3: [
+            ("安心運", "弱さを見せるほど近づく", "完璧に見せるより、素の温度を少しだけ。"),
+            ("受容運", "甘え方を選ぶ日", "頼るなら重くせず、具体的にお願いして。"),
+            ("心ほどき運", "本音の入口が開く", "不安をぶつけず、感じた理由を言葉に。"),
+        ],
+        4: [
+            ("ときめき運", "楽しい誘いが流れを作る", "予定は軽めに。笑える要素を入れると強い日。"),
+            ("華やぎ運", "恋の温度を上げやすい", "少しだけ見た目や香りに気を配って。"),
+            ("魅力運", "明るい提案が響く", "悩み相談より、楽しい未来を見せると進みます。"),
+        ],
+        5: [
+            ("調整運", "相手に合わせすぎない", "譲る前に、自分がどうしたいかを確認して。"),
+            ("整え運", "気遣いの量を見直す", "尽くしすぎるより、心地よい距離を守って。"),
+            ("丁寧運", "細かな違和感を流さない", "小さな不満ほど、穏やかに早めに整えて。"),
+        ],
+        6: [
+            ("対人運", "相手の反応をよく見る", "答えを決めつけず、今日は聞き役が効きます。"),
+            ("鏡運", "相手の態度から自分も見える", "期待を押しつけず、温度差を観察して。"),
+            ("バランス運", "歩幅を合わせるほど安定", "先回りせず、相手の言葉を待つ余白を。"),
+        ],
+        7: [
+            ("本音運", "嫉妬や不安の奥を読む", "責めるより、欲しかった安心を言葉にして。"),
+            ("深まり運", "曖昧な感情を見つめる", "極端な結論を出す前に、理由を一つ掘って。"),
+            ("核心運", "隠していた望みが出やすい", "重い話は短く、逃げ道を残して伝えて。"),
+        ],
+        8: [
+            ("進展運", "いつもと違う誘い方が効く", "少し遠出や新しい店など、変化を足して。"),
+            ("冒険運", "恋の景色を変える日", "普段言わない褒め言葉が流れを動かします。"),
+            ("広がり運", "距離を越える提案が吉", "会えない相手にも、未来形の話題を出して。"),
+        ],
+        9: [
+            ("現実運", "将来の話を軽く出してみる", "重く迫らず、生活感のある話題を少しだけ。"),
+            ("信頼運", "約束の扱いが印象を決める", "小さな時間厳守が、安心感につながります。"),
+            ("地固め運", "関係の土台を整える", "勢いより誠実さ。返事は遅れても丁寧に。"),
+        ],
+        10: [
+            ("縁運", "友人経由の出会いに目を向ける", "一人で探すより、周囲の誘いに乗って。"),
+            ("紹介運", "人の輪から恋が動く", "集まりでは聞き役から入ると印象が残ります。"),
+            ("未来運", "価値観の近い人に気づく", "肩書きより、会話のテンポを見て。"),
+        ],
+        11: [
+            ("余白運", "追いすぎず相手の余地を残す", "返信待ちは別の予定で心を逃がして。"),
+            ("夢見運", "理想を膨らませすぎない", "相手の現実の行動を一つ見て判断して。"),
+            ("静かな運", "想いを寝かせるほど整う", "今日は詰めず、やさしい距離感を保って。"),
+        ],
+    },
+    "money": {
+        0: [
+            ("入る運", "得意なことで価値を受け取る", "遠慮せず、できることを価格や条件に反映して。"),
+            ("収穫運", "積み上げた力がお金に近づく", "無料で引き受けすぎていないか見直して。"),
+            ("価値運", "自分の強みを出すほど巡る", "得意分野の発信や提案が次の収入種に。"),
+        ],
+        1: [
+            ("管理運", "小さな固定費を見直す", "使っていない契約を一つ切るだけで流れが軽く。"),
+            ("整財運", "残す仕組みを作る", "節約より自動で残る形を一つ増やして。"),
+            ("所有運", "持ち物と支出を揃える", "安いから買うより、長く使う基準で選んで。"),
+        ],
+        2: [
+            ("情報運", "買う前に比較すると残る", "口コミを二つ以上見てから決めると失敗減。"),
+            ("選別運", "情報の取り方で差が出る", "限定や急かし文句には一拍置いて。"),
+            ("交渉運", "聞くだけで条件が変わる", "値段だけでなく、保証や期間も確認して。"),
+        ],
+        3: [
+            ("守り運", "生活費の安心ラインを整える", "不安な出費ほど、先に上限を決めて。"),
+            ("家計運", "暮らしの土台を見直す", "食費や日用品の買い方に改善余地あり。"),
+            ("安心運", "備えが心を落ち着かせる", "小さな予備費を作ると判断がぶれません。"),
+        ],
+        4: [
+            ("楽しみ運", "好きなことへの投資が活きる", "ただの浪費にせず、経験が残る使い方を。"),
+            ("喜び運", "気分が上がる支出は厳選して", "一点豪華より、満足が続くものを選んで。"),
+            ("創造運", "趣味がお金のヒントに変わる", "好きなものを人に説明すると需要が見えます。"),
+        ],
+        5: [
+            ("整理運", "使途不明の出費を一つ止める", "履歴を見て、記憶にない支払いから確認を。"),
+            ("改善運", "細かい支出に答えがある", "完璧な節約より、毎日減らせる一つを。"),
+            ("点検運", "数字を見るほど安心が戻る", "怖くても残高と予定支出を並べてみて。"),
+        ],
+        6: [
+            ("交渉運", "条件を確認してから動く", "曖昧な約束は、金額と期限を文字で残して。"),
+            ("契約運", "人とのお金を明確にする", "借り貸しや割り勘は早めに線引きを。"),
+            ("均衡運", "損得より納得を整える", "相手に合わせる前に、自分の上限を決めて。"),
+        ],
+        7: [
+            ("共有運", "借り貸しや共同管理を明確に", "感情で曖昧にしたお金ほど、今日整理を。"),
+            ("深掘り運", "隠れた支出を見つける", "サブスクや手数料に小さな漏れがありそう。"),
+            ("再生運", "過去の損を学びに変える", "同じ買い方を繰り返さないルールを一つ。"),
+        ],
+        8: [
+            ("拡大運", "学びや移動にお金を回す", "短期の得より、経験値が増える使い方を。"),
+            ("投資運", "視野を広げる支出が吉", "本や講座は、今の悩みに直結するものから。"),
+            ("遠方運", "外の情報が金運を広げる", "普段見ない市場やサービスを調べてみて。"),
+        ],
+        9: [
+            ("堅実運", "長く使うものを選ぶ", "安さより修理しやすさ、続けやすさを基準に。"),
+            ("積立運", "小さく続けるほど強い", "今日の一回より、毎月の仕組みを整えて。"),
+            ("責任運", "数字を締めるほど残る", "支払い期限と優先順位を先に固めて。"),
+        ],
+        10: [
+            ("紹介運", "人からの情報に収穫あり", "信頼できる人のおすすめだけ一つ試して。"),
+            ("仲間運", "共同の知恵が金運を動かす", "一人で悩まず、詳しい人に聞くと近道。"),
+            ("未来運", "新しい収入口を考える", "副業や発信は、小さく試す案から始めて。"),
+        ],
+        11: [
+            ("節約運", "気分買いを一晩寝かせる", "欲しい理由が曖昧なら、今日は保留が正解。"),
+            ("浄化運", "お金の不安をほどく", "買う前に、今あるもので代用できるか確認を。"),
+            ("見送り運", "買わない選択が流れを守る", "判断に迷う支出は、明日の自分に渡して。"),
+        ],
+    },
+    "work": {
+        0: [
+            ("主役運", "自分の案を先に出す", "完璧な資料より、最初の方向性を早めに共有して。"),
+            ("先導運", "声を上げるほど進む", "遠慮して後回しにした提案を一つ出して。"),
+            ("突破運", "自分発信が場を動かす", "小さな決断を待たずに投げると流れが速い日。"),
+        ],
+        1: [
+            ("準備運", "資料や段取りを整える", "表に出る前の確認が、後の評価を支えます。"),
+            ("仕込み運", "見えない作業に価値がある", "明日の自分が楽になる下準備を一つ。"),
+            ("安定運", "急がず土台を固める", "新規より、手元の抜け漏れを潰すと強い日。"),
+        ],
+        2: [
+            ("発信運", "確認や共有を早めにする", "迷ったら抱えず、短く状況を出して。"),
+            ("連絡運", "言葉の速さが成果になる", "結論を先に置くと、相手が動きやすくなります。"),
+            ("調整運", "情報の橋渡しが効く", "自分だけ知っていることは今日共有して。"),
+        ],
+        3: [
+            ("基盤運", "作業環境を一つ整える", "机・通知・予定表のどれかを軽くして。"),
+            ("保守運", "足元の仕事を守る", "派手な成果より、ミスを減らす工夫が評価に。"),
+            ("安心運", "慣れた手順を整える", "毎回迷う作業は、テンプレ化すると楽です。"),
+        ],
+        4: [
+            ("評価運", "得意な役割で前に出る", "遠慮せず、あなたらしい見せ場を取りにいって。"),
+            ("表現運", "魅せ方で印象が変わる", "成果は数字だけでなく、背景も一言添えて。"),
+            ("創造運", "遊び心が突破口になる", "堅い場面ほど、わかりやすい例えが効きます。"),
+        ],
+        5: [
+            ("実務運", "細かいタスクから片づける", "五分で終わるものを先に消すと集中が戻ります。"),
+            ("精度運", "細部の修正が信頼になる", "見直しは一回多めに。小さな穴を塞いで。"),
+            ("改善運", "手順を磨くほど進む", "面倒な作業ほど、一つだけ自動化や短縮を。"),
+        ],
+        6: [
+            ("協力運", "相手の目的を聞いて動く", "自分の正しさより、相手の優先順位を確認して。"),
+            ("対話運", "すり合わせで成果が出る", "依頼を受ける前に、完成形を言葉にして。"),
+            ("均衡運", "役割分担を整える", "引き受けすぎは禁物。境界線を静かに引いて。"),
+        ],
+        7: [
+            ("集中運", "深い作業を先に確保する", "通知を切る時間を作ると、一気に進みます。"),
+            ("核心運", "問題の根に触れやすい", "表面の修正より、原因を一つ特定して。"),
+            ("探究運", "難所に向き合うほど強い", "避けていたタスクを、短時間だけ開いてみて。"),
+        ],
+        8: [
+            ("挑戦運", "新しいやり方を試してみる", "成功前提でなく、検証として小さく始めて。"),
+            ("拡張運", "視野を広げるほど進む", "他業界のやり方にヒントが見つかります。"),
+            ("前進運", "少し背伸びした選択が吉", "不安でも、学びながら進む余地があります。"),
+        ],
+        9: [
+            ("達成運", "期限と数字を先に確認する", "ゴールを曖昧にしないほど成果が出ます。"),
+            ("責任運", "約束の精度が評価になる", "納期・範囲・優先度を一度言語化して。"),
+            ("実績運", "積み重ねが見える日", "終わったことも記録し、成果として残して。"),
+        ],
+        10: [
+            ("チーム運", "相談先を一つ増やす", "一人で抱える前に、視点の違う人へ投げて。"),
+            ("連携運", "人の力を借りるほど進む", "相談は弱さではなく、速度を上げる選択です。"),
+            ("構想運", "先の流れを共有する", "今だけでなく、次の一手まで話すと味方が増えます。"),
+        ],
+        11: [
+            ("調整運", "詰め込みすぎを減らす", "今日やらないことを決めるほど大事な仕事が残ります。"),
+            ("休ませ運", "余白が判断力を戻す", "無理な集中より、区切りを作って回復して。"),
+            ("手放し運", "完璧主義を少し緩める", "七割で出して、反応を見ながら磨くと進みます。"),
+        ],
+    },
+}
+
+OVERALL_DETAIL_TEMPLATES = [
+    "{topic}から動くと、他のテーマも整いやすい日。",
+    "迷ったらまず{topic}を優先すると、流れをつかみやすい日。",
+    "{topic}の一歩が、今日全体の手応えにつながります。",
+    "午前中は{topic}を先に片づけると、午後の判断が軽くなります。",
+    "{topic}で小さく勝ち筋を作ると、他の運気にも弾みが出ます。",
+    "今日は{topic}を広げすぎず、一点集中にすると成果が残ります。",
+    "{topic}に関する迷いを一つ減らすだけで、全体の流れが澄みます。",
+    "人に合わせすぎず、{topic}の優先順位を先に決めて動いて。",
+    "{topic}は勢いより整え方。焦らず順番を決めると安定します。",
+    "今日の突破口は{topic}。小さな行動を早めに置くのが鍵です。",
+    "{topic}を後回しにしないほど、夕方の満足感が変わります。",
+    "まず{topic}の不要な迷いを削ると、一日全体が扱いやすくなります。",
+]
+
+OVERALL_TONE_VARIANTS = [
+    "主役級の流れ",
+    "一日を動かす軸",
+    "流れをつかむ星回り",
+    "使いどころが多い日",
+    "追い風を拾う日",
+    "得意分野を活かす日",
+    "テーマを絞る日",
+    "整えて伸ばす日",
+    "小さく勝ちに行く日",
+    "無理せず整える日",
+    "余白を守る日",
+    "立て直しが効く日",
+]
+
 
 def find_font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     for path in FONT_CANDIDATES:
@@ -718,7 +937,14 @@ def planet_sign_from_sky(sky: dict[str, Any], planet_name: str) -> str:
 def fortune_detail_for_sign(sky: dict[str, Any], sign: str, domain: dict[str, str]) -> dict[str, str | int]:
     planet_sign = planet_sign_from_sky(sky, domain["planet"])
     diff = (SIGN_INDEX[sign] - SIGN_INDEX[planet_sign]) % 12
-    tone, comment = FORTUNE_COPY[domain["key"]][diff]
+    variants = FORTUNE_COPY_VARIANTS.get(domain["key"], {}).get(diff)
+    if variants:
+        tone, comment, detail = variants[
+            variation_index(sky, domain["key"], f"{sign}-{diff}-copy", len(variants))
+        ]
+    else:
+        tone, comment = FORTUNE_COPY[domain["key"]][diff]
+        detail = "今日の流れに合わせ、無理なく一つだけ動いて。"
     return {
         "domain": domain["key"],
         "label": domain["label"],
@@ -727,6 +953,7 @@ def fortune_detail_for_sign(sky: dict[str, Any], sign: str, domain: dict[str, st
         "planet_sign": planet_sign,
         "tone": tone,
         "comment": comment,
+        "detail": detail,
         "score": FORTUNE_SCORE_BY_DIFF[diff],
         "order": RANKING_RELATION_ORDER.index(diff),
     }
@@ -784,24 +1011,23 @@ def fortune_ranking_items(sky: dict[str, Any], section_key: str) -> list[dict[st
         if section_key == "overall":
             fortunes = item["fortunes"]
             raw_score = sum(int(fortune["score"]) for fortune in fortunes.values())
-            if rank <= 3:
-                tone = "主役級の流れ"
-            elif rank <= 6:
-                tone = "使いどころが多い日"
-            elif rank <= 9:
-                tone = "テーマを絞る日"
-            else:
-                tone = "無理せず整える日"
+            tone_offset = variation_index(sky, "overall", "tone-order", len(OVERALL_TONE_VARIANTS))
+            tone = OVERALL_TONE_VARIANTS[(rank - 1 + tone_offset) % len(OVERALL_TONE_VARIANTS)]
             comment = (
                 f"恋愛{fortunes['love']['tone']}・"
                 f"金運{fortunes['money']['tone']}・"
                 f"仕事{fortunes['work']['tone']}"
             )
+            dominant = item["dominant"]
+            detail_offset = variation_index(sky, "overall", "detail-order", len(OVERALL_DETAIL_TEMPLATES))
+            detail_template = OVERALL_DETAIL_TEMPLATES[(rank - 1 + detail_offset) % len(OVERALL_DETAIL_TEMPLATES)]
+            detail = detail_template.format(topic=dominant["short"])
         else:
             fortune = item["fortunes"][section_key]
             raw_score = int(fortune["score"])
             tone = str(fortune["tone"])
             comment = str(fortune["comment"])
+            detail = str(fortune["detail"])
 
         items.append(
             {
@@ -812,6 +1038,7 @@ def fortune_ranking_items(sky: dict[str, Any], section_key: str) -> list[dict[st
                 "raw_score": raw_score,
                 "tone": tone,
                 "comment": comment,
+                "detail": detail,
             }
         )
     return items
@@ -833,18 +1060,22 @@ def format_three_fortune_line(item: dict[str, Any]) -> str:
         f"恋愛{fortunes['love']['tone']}・"
         f"金運{fortunes['money']['tone']}・"
         f"仕事{fortunes['work']['tone']}。"
-        f"{dominant['short']}は{dominant['comment']}。"
+        f"{dominant['short']}は{dominant['comment']}。{dominant['detail']}"
     )
 
 
-def format_fortune_ranking_line(item: dict[str, Any], section_key: str) -> str:
+def format_fortune_ranking_line(item: dict[str, Any], section_key: str, include_detail: bool = True) -> str:
     rank = item["rank"]
     sign = item["sign"]
     index_label = FORTUNE_SECTION_META[section_key]["index_label"]
     index_text = f"{index_label}{item['score']}/100"
     if section_key == "overall":
         dominant = item["dominant"]
-        return f"{rank}位 {sign}: {index_text}。{item['comment']}。今日は{dominant['short']}の流れを優先。"
+        if include_detail:
+            return f"{rank}位 {sign}: {index_text}。{item['comment']}。{item['detail']}"
+        return f"{rank}位 {sign}: {index_text}。{item['tone']}。{item['comment']}。{dominant['short']}を先に。"
+    if include_detail:
+        return f"{rank}位 {sign}: {index_text}。{item['tone']}。{item['comment']}。{item['detail']}"
     return f"{rank}位 {sign}: {index_text}。{item['tone']}。{item['comment']}。"
 
 
@@ -884,7 +1115,7 @@ def three_fortunes_caption(sky: dict[str, Any]) -> str:
     for section_key in NOON_SECTION_ORDER:
         meta = FORTUNE_SECTION_META[section_key]
         ranked_lines = [
-            format_fortune_ranking_line(item, section_key).replace(":", "：", 1)
+            format_fortune_ranking_line(item, section_key, include_detail=False).replace(":", "：", 1)
             for item in fortune_ranking_items(sky, section_key)
         ]
         sections.append(f"{meta['label']}\n" + "\n".join(ranked_lines))
@@ -1093,8 +1324,9 @@ def generate_fortune_ranking_card(
     badge_font = find_font(22)
     rank_font = find_font(34)
     sign_font = find_font(31)
-    top_body_font = find_font(19)
+    top_body_font = find_font(17)
     list_font = find_font(20)
+    list_comment_font = find_font(17)
 
     gold = (232, 199, 121)
     pale = (248, 236, 192)
@@ -1127,7 +1359,7 @@ def generate_fortune_ranking_card(
     start_x = (RANKING_CARD_SIZE[0] - top_w * 3 - gap * 2) // 2
     for index, item in enumerate(top_items):
         x = start_x + index * (top_w + gap)
-        h = 240
+        h = 260
         draw.rounded_rectangle((x, top_y, x + top_w, top_y + h), radius=28, fill=panel, outline=accent_color, width=3)
         draw.text((x + 22, top_y + 20), f"{item['rank']}位", font=rank_font, fill=gold)
         draw.text((x + 22, top_y + 68), str(item["sign"]), font=sign_font, fill=white)
@@ -1137,7 +1369,8 @@ def generate_fortune_ranking_card(
         score_w = text_width(draw, score_text, top_body_font)
         draw.text((draw_center_x - score_w // 2, top_y + 115), score_text, font=top_body_font, fill=accent_color)
         next_y = draw_wrapped_text(draw, x + 22, top_y + 154, str(item["tone"]), top_body_font, pale, top_w - 44, 4)
-        draw_wrapped_text(draw, x + 22, next_y + 4, str(item["comment"]), top_body_font, muted, top_w - 44, 4)
+        top_comment = f"{item['comment']}。{item['detail']}"
+        draw_wrapped_text(draw, x + 22, next_y + 4, top_comment, top_body_font, muted, top_w - 44, 4)
 
     list_y = 608
     row_h = 112
@@ -1157,8 +1390,8 @@ def generate_fortune_ranking_card(
         score_text = f"{item['score']}/100"
         score_w = text_width(draw, score_text, list_font)
         draw.text((x + col_w - score_w - 20, y + 16), score_text, font=list_font, fill=accent_color)
-        comment = f"{item['tone']}。{item['comment']}"
-        draw_wrapped_text(draw, x + 18, y + 52, comment, list_font, muted, col_w - 36, 4)
+        comment = f"{item['tone']}。{item['comment']}。{item['detail']}"
+        draw_wrapped_text(draw, x + 18, y + 50, comment, list_comment_font, muted, col_w - 36, 3)
 
     draw_centered(draw, 1236, "詳しい星座別コメントは、この投稿のスレッドへ。", small_font, pale)
     draw_centered(draw, 1280, "hoshiyomi4u.com", small_font, gold)

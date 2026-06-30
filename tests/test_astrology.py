@@ -20,6 +20,7 @@ from generate_and_post import (
     crosses,
     find_font,
     fortune_ranking_items,
+    format_fortune_ranking_line,
     generate_fortune_ranking_card,
     generate_post_texts,
     generate_ranking_card,
@@ -358,6 +359,67 @@ class AstrologyHelperTests(unittest.TestCase):
             self.assertEqual(len(items), 12)
             self.assertEqual({item["sign"] for item in items}, expected_signs)
             self.assertEqual([item["rank"] for item in items], list(range(1, 13)))
+
+    def test_fortune_ranking_lines_include_daily_detail(self):
+        sky = {
+            "date": "2026年06月12日",
+            "weekday": "金曜日",
+            "moon_sign": "牡牛座",
+            "moon_phase": "新月前の月",
+            "events": [],
+            "retrogrades": ["冥王星(水瓶座)"],
+            "planet_signs": {
+                "金星": {"sign": "牡牛座"},
+                "木星": {"sign": "蟹座"},
+                "水星": {"sign": "双子座"},
+            },
+        }
+        item = fortune_ranking_items(sky, "love")[0]
+        line = format_fortune_ranking_line(item, "love")
+
+        self.assertIn("/100", line)
+        self.assertIn(str(item["detail"]), line)
+        self.assertLessEqual(len(line), MAX_TWEET_CHARS)
+
+    def test_fortune_details_do_not_repeat_within_section(self):
+        sky = {
+            "date": "2026年06月12日",
+            "weekday": "金曜日",
+            "moon_sign": "牡牛座",
+            "moon_phase": "新月前の月",
+            "events": [],
+            "retrogrades": ["冥王星(水瓶座)"],
+            "planet_signs": {
+                "金星": {"sign": "牡牛座"},
+                "木星": {"sign": "蟹座"},
+                "水星": {"sign": "双子座"},
+            },
+        }
+
+        for section_key in NOON_SECTION_ORDER:
+            details = [str(item["detail"]) for item in fortune_ranking_items(sky, section_key)]
+            self.assertEqual(len(details), len(set(details)))
+
+    def test_fortune_detail_wording_varies_by_date(self):
+        sky = {
+            "date": "2026年06月12日",
+            "weekday": "金曜日",
+            "moon_sign": "牡牛座",
+            "moon_phase": "新月前の月",
+            "events": [],
+            "retrogrades": ["冥王星(水瓶座)"],
+            "planet_signs": {
+                "金星": {"sign": "牡牛座"},
+                "木星": {"sign": "蟹座"},
+                "水星": {"sign": "双子座"},
+            },
+        }
+        next_day = {**sky, "date": "2026年06月13日", "weekday": "土曜日"}
+
+        today_details = [str(item["detail"]) for item in fortune_ranking_items(sky, "work")]
+        next_day_details = [str(item["detail"]) for item in fortune_ranking_items(next_day, "work")]
+
+        self.assertNotEqual(today_details, next_day_details)
 
     def test_ranking_text_wraps_without_ellipsis(self):
         from PIL import Image, ImageDraw
