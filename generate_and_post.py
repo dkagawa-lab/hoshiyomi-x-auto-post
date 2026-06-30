@@ -431,6 +431,37 @@ FORTUNE_DOMAINS = [
     {"key": "work", "label": "仕事運", "planet": "水星", "short": "仕事", "symbol": "仕"},
 ]
 
+FORTUNE_DOMAIN_BY_KEY = {domain["key"]: domain for domain in FORTUNE_DOMAINS}
+NOON_SECTION_ORDER = ("overall", "love", "money", "work")
+NOON_TWEETS_PER_SECTION = 5
+
+FORTUNE_SECTION_META = {
+    "overall": {
+        "label": "総合運",
+        "title": "総合運ランキング",
+        "subtitle": "恋愛・金運・仕事を合わせた今日の流れ",
+        "color": (232, 199, 121),
+    },
+    "love": {
+        "label": "恋愛運",
+        "title": "恋愛運ランキング",
+        "subtitle": "金星の位置から見る、恋の動き方",
+        "color": (225, 151, 180),
+    },
+    "money": {
+        "label": "金運",
+        "title": "金運ランキング",
+        "subtitle": "木星の位置から見る、お金の流れ",
+        "color": (232, 199, 121),
+    },
+    "work": {
+        "label": "仕事運",
+        "title": "仕事運ランキング",
+        "subtitle": "水星の位置から見る、仕事の進め方",
+        "color": (144, 192, 233),
+    },
+}
+
 FORTUNE_SCORE_BY_DIFF = {
     0: 5,
     4: 5,
@@ -662,6 +693,57 @@ def fortune_domain_rankings(sky: dict[str, Any], domain_key: str) -> list[dict[s
     return sorted(items, key=rank_key)
 
 
+def overall_fortune_rankings(sky: dict[str, Any]) -> list[dict[str, Any]]:
+    items = three_fortune_items(sky)
+
+    def rank_key(item: dict[str, Any]) -> tuple[int, int, int, int]:
+        fortunes = item["fortunes"]
+        total_score = sum(int(fortune["score"]) for fortune in fortunes.values())
+        total_order = sum(int(fortune["order"]) for fortune in fortunes.values())
+        dominant_order = int(item["dominant"]["order"])
+        return (-total_score, total_order, dominant_order, SIGN_INDEX[item["sign"]])
+
+    return sorted(items, key=rank_key)
+
+
+def fortune_ranking_items(sky: dict[str, Any], section_key: str) -> list[dict[str, Any]]:
+    if section_key == "overall":
+        ranked = overall_fortune_rankings(sky)
+    elif section_key in FORTUNE_DOMAIN_BY_KEY:
+        ranked = fortune_domain_rankings(sky, section_key)
+    else:
+        raise ValueError(f"unknown fortune section: {section_key}")
+
+    items: list[dict[str, Any]] = []
+    for rank, item in enumerate(ranked, start=1):
+        if section_key == "overall":
+            fortunes = item["fortunes"]
+            score = sum(int(fortune["score"]) for fortune in fortunes.values())
+            tone = f"総合{score}点"
+            comment = (
+                f"恋愛{fortunes['love']['tone']}・"
+                f"金運{fortunes['money']['tone']}・"
+                f"仕事{fortunes['work']['tone']}"
+            )
+        else:
+            fortune = item["fortunes"][section_key]
+            score = int(fortune["score"])
+            tone = str(fortune["tone"])
+            comment = str(fortune["comment"])
+
+        items.append(
+            {
+                **item,
+                "rank": rank,
+                "short": SIGN_SHORT_LABELS.get(item["sign"], item["sign"].replace("座", "")),
+                "score": score,
+                "tone": tone,
+                "comment": comment,
+            }
+        )
+    return items
+
+
 def three_fortune_overview(sky: dict[str, Any]) -> str:
     parts = []
     for domain in FORTUNE_DOMAINS:
@@ -682,29 +764,61 @@ def format_three_fortune_line(item: dict[str, Any]) -> str:
     )
 
 
-def build_noon_thread(sky: dict[str, Any]) -> list[str]:
-    overview_variants = [
-        f"星の位置から見る3大運勢。{three_fortune_overview(sky)}。恋愛・お金・仕事の流れを、太陽星座別に見ていきます。#星読み",
-        f"昼の星読み。今日は{three_fortune_overview(sky)}を軸に、恋愛運・金運・仕事運を12星座別で読みます。#占星術",
-        f"12星座だけでは見えにくい、今日の3大運勢。{three_fortune_overview(sky)}。恋愛/金運/仕事の使いどころです。#星読み",
+def format_fortune_ranking_line(item: dict[str, Any], section_key: str) -> str:
+    rank = item["rank"]
+    sign = item["sign"]
+    if section_key == "overall":
+        dominant = item["dominant"]
+        return f"{rank}位 {sign}: {item['comment']}。今日は{dominant['short']}の流れを優先。"
+    return f"{rank}位 {sign}: {item['tone']}。{item['comment']}。"
+
+
+def noon_section_header(sky: dict[str, Any], section_key: str) -> str:
+    if section_key == "overall":
+        variants = [
+            f"昼の星読み。まずは総合運ランキング。{three_fortune_overview(sky)}。恋愛・金運・仕事を合わせて、今日の流れが強い順に見ます。#星読み",
+            f"今日の総合運ランキング。{three_fortune_overview(sky)}。3つの運気を合わせ、動きやすい星座から順に読みます。#占星術",
+            f"12星座別、今日の総合運。{three_fortune_overview(sky)}。恋愛・お金・仕事の重なりから順位を出しました。#星読み",
+        ]
+        text = variants[variation_index(sky, "noon", "overall-header", len(variants))]
+        return append_link_to_tweet(text)
+
+    domain = FORTUNE_DOMAIN_BY_KEY[section_key]
+    planet_sign = planet_sign_from_sky(sky, domain["planet"])
+    variants = [
+        f"{domain['label']}ランキング。{domain['planet']}は{planet_sign}。太陽星座を目安に、今日の{domain['short']}の動き方を見ていきます。#星読み",
+        f"続いて{domain['label']}。{domain['planet']}が{planet_sign}にある今日、流れに乗りやすい星座から順に読みます。#占星術",
+        f"今日の{domain['label']}。鍵になる天体は{domain['planet']}、位置は{planet_sign}。12星座別に使いどころを見ます。#星読み",
     ]
-    overview = overview_variants[variation_index(sky, "noon", "three-fortune-overview", len(overview_variants))]
-    posts = [append_link_to_tweet(overview)]
-    items_by_sign = {item["sign"]: item for item in three_fortune_items(sky)}
-    for group in SIGN_GROUPS:
-        lines = [format_three_fortune_line(items_by_sign[sign]) for sign in group]
-        posts.append(trim_tweet("\n".join(lines)))
+    return trim_tweet(variants[variation_index(sky, "noon", f"{section_key}-header", len(variants))])
+
+
+def build_noon_thread(sky: dict[str, Any]) -> list[str]:
+    posts: list[str] = []
+    for section_key in NOON_SECTION_ORDER:
+        posts.append(noon_section_header(sky, section_key))
+        ranked_items = fortune_ranking_items(sky, section_key)
+        for offset in range(0, len(ranked_items), 3):
+            lines = [format_fortune_ranking_line(item, section_key) for item in ranked_items[offset : offset + 3]]
+            posts.append(trim_tweet("\n".join(lines)))
     return posts
 
 
 def three_fortunes_caption(sky: dict[str, Any]) -> str:
-    lines = [format_three_fortune_line(item).replace(":", "：", 1) for item in three_fortune_items(sky)]
+    sections: list[str] = []
+    for section_key in NOON_SECTION_ORDER:
+        meta = FORTUNE_SECTION_META[section_key]
+        ranked_lines = [
+            format_fortune_ranking_line(item, section_key).replace(":", "：", 1)
+            for item in fortune_ranking_items(sky, section_key)
+        ]
+        sections.append(f"{meta['label']}\n" + "\n".join(ranked_lines))
     return (
-        f"{sky['date']}の3大運勢。\n"
+        f"{sky['date']}の星座別ランキング。\n"
         f"{three_fortune_overview(sky)}。\n\n"
-        "星の位置から、恋愛運・金運・仕事運を太陽星座別に読みます。\n"
-        "今日どこに力を入れると流れが開きやすいか、気になる星座から見てください。\n\n"
-        + "\n".join(lines)
+        "総合運、恋愛運、金運、仕事運をそれぞれ独立して読みます。\n"
+        "太陽星座を目安に、気になるテーマから見てください。\n\n"
+        + "\n\n".join(sections)
         + f"\n\n出生図から深く読むならプロフィールへ。\n{SITE_URL}\n\n#星読み #占星術 #HOSHIYOMI"
     )
 
@@ -836,7 +950,7 @@ def generate_three_fortunes_card(
     accent = (178, 135, 79)
 
     draw_centered(draw, 48, "HOSHIYOMI", brand_font, gold)
-    draw_centered(draw, 104, f"{sky['date']} / 星で見る3大運勢", small_font, muted)
+    draw_centered(draw, 104, f"{sky['date']} / 星で見るテーマ別運勢", small_font, muted)
     draw_centered(draw, 154, "恋愛運・金運・仕事運", title_font, pale)
     draw_centered_wrapped(draw, 222, three_fortune_overview(sky), small_font, gold, 940)
 
@@ -877,6 +991,87 @@ def generate_three_fortunes_card(
     draw.rounded_rectangle((104, 1140, 976, 1218), radius=26, fill=(12, 16, 42), outline=border, width=1)
     draw_centered(draw, 1162, "全12星座の詳しい運勢は、この投稿のスレッドへ。", foot_font, pale)
     draw_centered(draw, 1278, "hoshiyomi4u.com", foot_font, gold)
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    image.save(output_path, quality=92, optimize=True)
+    return output_path
+
+
+def generate_fortune_ranking_card(
+    sky: dict[str, Any],
+    section_key: str,
+    output_path: Path,
+    now: datetime | None = None,
+) -> Path:
+    now = now or datetime.now(JST)
+    if section_key not in FORTUNE_SECTION_META:
+        raise ValueError(f"unknown fortune section: {section_key}")
+
+    meta = FORTUNE_SECTION_META[section_key]
+    accent_color = tuple(meta["color"])
+    image = create_ranking_background(f"{sky['date']}-{section_key}-fortune-ranking")
+    draw = ImageDraw.Draw(image)
+
+    brand_font = find_font(46)
+    small_font = find_font(23)
+    title_font = find_font(54)
+    rank_font = find_font(34)
+    sign_font = find_font(31)
+    top_body_font = find_font(19)
+    list_font = find_font(20)
+
+    gold = (232, 199, 121)
+    pale = (248, 236, 192)
+    white = (248, 246, 235)
+    muted = (187, 181, 206)
+    border = (88, 80, 132)
+    panel = (17, 20, 52)
+
+    draw_centered(draw, 48, "HOSHIYOMI", brand_font, gold)
+    draw_centered(draw, 104, f"{sky['date']} / 太陽星座別", small_font, muted)
+    draw_centered(draw, 154, str(meta["title"]), title_font, pale)
+    if section_key == "overall":
+        subtitle = f"{meta['subtitle']}。{three_fortune_overview(sky)}。"
+    else:
+        domain = FORTUNE_DOMAIN_BY_KEY[section_key]
+        subtitle = f"{meta['subtitle']}。{domain['planet']}は{planet_sign_from_sky(sky, domain['planet'])}。"
+    draw_centered_wrapped(draw, 222, subtitle, small_font, accent_color, 920)
+
+    items = fortune_ranking_items(sky, section_key)
+    top_items = items[:3]
+    top_y = 286
+    top_w = 298
+    gap = 22
+    start_x = (RANKING_CARD_SIZE[0] - top_w * 3 - gap * 2) // 2
+    for index, item in enumerate(top_items):
+        x = start_x + index * (top_w + gap)
+        h = 240
+        draw.rounded_rectangle((x, top_y, x + top_w, top_y + h), radius=28, fill=panel, outline=accent_color, width=3)
+        draw.text((x + 22, top_y + 20), f"{item['rank']}位", font=rank_font, fill=gold)
+        draw.text((x + 22, top_y + 68), str(item["sign"]), font=sign_font, fill=white)
+        next_y = draw_wrapped_text(draw, x + 22, top_y + 112, str(item["tone"]), top_body_font, pale, top_w - 44, 4)
+        draw_wrapped_text(draw, x + 22, next_y + 6, str(item["comment"]), top_body_font, muted, top_w - 44, 4)
+
+    list_y = 558
+    row_h = 122
+    col_gap = 20
+    col_w = 462
+    left_x = 58
+    right_x = left_x + col_w + col_gap
+    for index, item in enumerate(items[3:]):
+        column = 0 if index < 5 else 1
+        row = index if index < 5 else index - 5
+        x = left_x if column == 0 else right_x
+        y = list_y + row * (row_h + 10)
+        draw.rounded_rectangle((x, y, x + col_w, y + row_h), radius=18, fill=panel, outline=border, width=1)
+        draw.rectangle((x, y, x + 5, y + row_h), fill=accent_color)
+        draw.text((x + 18, y + 16), f"{item['rank']}位", font=list_font, fill=gold)
+        draw.text((x + 92, y + 16), str(item["sign"]), font=list_font, fill=white)
+        comment = f"{item['tone']}。{item['comment']}"
+        draw_wrapped_text(draw, x + 18, y + 52, comment, list_font, muted, col_w - 36, 4)
+
+    draw_centered(draw, 1236, "詳しい星座別コメントは、この投稿のスレッドへ。", small_font, pale)
+    draw_centered(draw, 1280, "hoshiyomi4u.com", small_font, gold)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     image.save(output_path, quality=92, optimize=True)
@@ -1323,29 +1518,38 @@ def main(argv: list[str] | None = None) -> None:
     for index, text in enumerate(texts, start=1):
         print(f"[post:{slot}:{index}/{len(texts)}]\n{text}\n")
 
-    social_card_path: Path | None = None
+    media_paths_by_post_index: dict[int, Path] = {}
     if slot in ("morning", "night"):
         filename = f"{now.strftime('%Y%m%d-%H%M%S')}-{slot}-ranking.jpg"
-        social_card_path = generate_ranking_card(sky, slot, OUTPUT_DIR / filename, now)
-        print(f"[x:{slot}:ranking_image] {social_card_path}")
+        path = generate_ranking_card(sky, slot, OUTPUT_DIR / filename, now)
+        media_paths_by_post_index[1] = path
+        print(f"[x:{slot}:ranking_image] {path}")
     elif slot == "noon":
-        filename = f"{now.strftime('%Y%m%d-%H%M%S')}-{slot}-three-fortunes.jpg"
-        social_card_path = generate_three_fortunes_card(sky, OUTPUT_DIR / filename, now)
-        print(f"[x:{slot}:three_fortunes_image] {social_card_path}")
+        timestamp = now.strftime("%Y%m%d-%H%M%S")
+        for section_index, section_key in enumerate(NOON_SECTION_ORDER):
+            filename = f"{timestamp}-{slot}-{section_key}.jpg"
+            path = generate_fortune_ranking_card(sky, section_key, OUTPUT_DIR / filename, now)
+            post_index = section_index * NOON_TWEETS_PER_SECTION + 1
+            media_paths_by_post_index[post_index] = path
+            print(f"[x:{slot}:{section_key}_image:{post_index}] {path}")
 
     if os.environ.get("DRY_RUN") == "1":
         print("[dry-run] skipped posting to X")
         return
 
-    social_media_id: str | None = None
-    if social_card_path:
-        social_media_id = upload_media_to_x(social_card_path)
-        print(f"[x:media_id] {social_media_id}")
+    media_ids_by_post_index: dict[int, str] = {}
+    for post_index, image_path in media_paths_by_post_index.items():
+        media_id = upload_media_to_x(image_path)
+        media_ids_by_post_index[post_index] = media_id
+        print(f"[x:media_id:{post_index}] {media_id}")
 
     results: list[dict[str, Any]] = []
     reply_to_tweet_id: str | None = None
     for index, text in enumerate(texts, start=1):
-        media_ids = [social_media_id] if index == 1 and social_media_id else None
+        if slot == "noon" and index in media_paths_by_post_index:
+            reply_to_tweet_id = None
+        media_id = media_ids_by_post_index.get(index)
+        media_ids = [media_id] if media_id else None
         result = post_to_x(text, reply_to_tweet_id, media_ids=media_ids)
         results.append(result)
         if result.get("duplicate"):

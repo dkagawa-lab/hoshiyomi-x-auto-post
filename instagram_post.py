@@ -24,6 +24,7 @@ from generate_and_post import (
     ANTHROPIC_MODEL,
     ANTHROPIC_VERSION,
     JST,
+    NOON_SECTION_ORDER,
     PLANETS,
     SITE_URL,
     SIGNS,
@@ -31,8 +32,8 @@ from generate_and_post import (
     SIGN_GROUPS,
     SIGN_INDEX,
     calc,
+    generate_fortune_ranking_card,
     generate_ranking_card,
-    generate_three_fortunes_card,
     jd_from,
     should_skip_late_midnight,
     moon_theme,
@@ -74,14 +75,14 @@ CAPTION_BRIEF = {
 CAPTION_TEMPLATES = {
     "midnight": "{date}。日が変わりました。\n月は{moon_sign}、{moon_phase}。\n{event_line}今日の鍵は「{theme}」。予定を増やす前に、心の向きを一つ決めておくと流れを受け取りやすい日です。\n\n#星読み #占星術 #HOSHIYOMI",
     "morning": "{date}の月は{moon_sign}。{moon_phase}の流れです。\n{event_line}今日は「{theme}」を意識して、反応を急がず、自分のペースに戻ることから始めてください。\n\n#星読み #占星術 #HOSHIYOMI",
-    "noon": "{date}の3大運勢。\n恋愛運・金運・仕事運を、今の星の位置から12星座別に読みます。\n太陽星座を目安に、今日どこへ力を注ぐか見てください。\n\n#星読み #占星術 #HOSHIYOMI",
+    "noon": "{date}の星座別ランキング。\n総合運・恋愛運・金運・仕事運を、今の星の位置から12星座別に読みます。\n太陽星座を目安に、気になるテーマから見てください。\n\n#星読み #占星術 #HOSHIYOMI",
     "night": "今日もおつかれさまでした。\n月は{moon_sign}、{moon_phase}。\n{event_line}うまくできたことだけでなく、引っかかった感情にも明日のヒントがあります。\n\n#星読み #占星術 #HOSHIYOMI",
 }
 
 IMAGE_MESSAGES = {
     "midnight": "今日の星の入口。\n月のサインと天体の動きから、一日の質感を読みます。",
     "morning": "朝の星読み。\n今日の空から、12星座別の使い方まで落とし込みます。",
-    "noon": "昼の星読みメモ。\n月の位置は、反応の出方と選び方をそっと映します。",
+    "noon": "昼の星読みランキング。\n総合・恋愛・金運・仕事の流れを12星座別に読みます。",
     "night": "夜の振り返り。\n今日の星を、明日の選び方へつなげます。",
 }
 
@@ -101,7 +102,7 @@ PLANET_MARKS = {
 SLOT_TITLES = {
     "midnight": "今日の星図",
     "morning": "朝の星読み",
-    "noon": "星読みメモ",
+    "noon": "星座別ランキング",
     "night": "夜の振り返り",
 }
 
@@ -571,7 +572,7 @@ def generate_card(sky: dict[str, Any], slot: str, output_path: Path, now: dateti
     if slot in ("morning", "night"):
         return generate_ranking_card(sky, slot, output_path, now)
     if slot == "noon":
-        return generate_three_fortunes_card(sky, output_path, now)
+        return generate_fortune_ranking_card(sky, "overall", output_path, now)
 
     image = create_background(f"{sky['date']}-{slot}")
     draw = ImageDraw.Draw(image)
@@ -607,6 +608,22 @@ def generate_card(sky: dict[str, Any], slot: str, output_path: Path, now: dateti
     output_path.parent.mkdir(parents=True, exist_ok=True)
     image.save(output_path, quality=92, optimize=True)
     return output_path
+
+
+def generate_card_paths(sky: dict[str, Any], slot: str, output_dir: Path, now: datetime | None = None) -> list[Path]:
+    now = now or datetime.now(JST)
+    timestamp = now.strftime("%Y%m%d-%H%M%S")
+    if slot == "noon":
+        return [
+            generate_fortune_ranking_card(
+                sky,
+                section_key,
+                output_dir / f"{timestamp}-{slot}-{section_key}.jpg",
+                now,
+            )
+            for section_key in NOON_SECTION_ORDER
+        ]
+    return [generate_card(sky, slot, output_dir / f"{timestamp}-{slot}.jpg", now)]
 
 
 def fallback_caption(sky: dict[str, Any], slot: str) -> str:
@@ -845,19 +862,25 @@ def wait_for_container(container_id: str) -> None:
         time.sleep(3)
 
 
-def publish_to_instagram(image_url: str, caption: str) -> dict[str, Any]:
-    ig_account_id = required_env("INSTAGRAM_BUSINESS_ACCOUNT_ID")
+def create_instagram_image_container(
+    ig_account_id: str,
+    image_url: str,
+    caption: str | None = None,
+    is_carousel_item: bool = False,
+) -> str:
     wait_for_public_image(image_url)
 
     create: dict[str, Any] | None = None
     for attempt in range(1, INSTAGRAM_CREATE_RETRIES + 1):
         try:
+            payload = {"image_url": image_url}
+            if caption is not None:
+                payload["caption"] = caption
+            if is_carousel_item:
+                payload["is_carousel_item"] = "true"
             create = graph_post(
                 f"{ig_account_id}/media",
-                {
-                    "image_url": image_url,
-                    "caption": caption,
-                },
+                payload,
             )
             break
         except InstagramGraphAPIError as exc:
@@ -879,7 +902,39 @@ def publish_to_instagram(image_url: str, caption: str) -> dict[str, Any]:
         raise RuntimeError(f"Instagram media creation did not return an id: {create}")
 
     wait_for_container(creation_id)
+    return str(creation_id)
+
+
+def publish_to_instagram(image_url: str, caption: str) -> dict[str, Any]:
+    ig_account_id = required_env("INSTAGRAM_BUSINESS_ACCOUNT_ID")
+    creation_id = create_instagram_image_container(ig_account_id, image_url, caption=caption)
     return graph_post(f"{ig_account_id}/media_publish", {"creation_id": creation_id})
+
+
+def publish_carousel_to_instagram(image_urls: list[str], caption: str) -> dict[str, Any]:
+    if len(image_urls) == 1:
+        return publish_to_instagram(image_urls[0], caption)
+    if not 2 <= len(image_urls) <= 10:
+        raise RuntimeError("Instagram carousel requires 2 to 10 images")
+
+    ig_account_id = required_env("INSTAGRAM_BUSINESS_ACCOUNT_ID")
+    child_ids = [
+        create_instagram_image_container(ig_account_id, image_url, is_carousel_item=True)
+        for image_url in image_urls
+    ]
+    create = graph_post(
+        f"{ig_account_id}/media",
+        {
+            "media_type": "CAROUSEL",
+            "children": ",".join(child_ids),
+            "caption": caption,
+        },
+    )
+    creation_id = create.get("id")
+    if not creation_id:
+        raise RuntimeError(f"Instagram carousel creation did not return an id: {create}")
+    wait_for_container(str(creation_id))
+    return graph_post(f"{ig_account_id}/media_publish", {"creation_id": str(creation_id)})
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -897,12 +952,12 @@ def main(argv: list[str] | None = None) -> None:
 
     sky = todays_sky(now)
     caption = generate_caption(sky, slot)
-    filename = f"{now.strftime('%Y%m%d-%H%M%S')}-{slot}.jpg"
-    local_path = generate_card(sky, slot, OUTPUT_DIR / filename, now)
+    local_paths = generate_card_paths(sky, slot, OUTPUT_DIR, now)
 
     print(f"[sky] {json.dumps(sky, ensure_ascii=False)}")
     print(f"[instagram:{slot}:caption]\n{caption}\n")
-    print(f"[instagram:{slot}:image] {local_path}")
+    for index, local_path in enumerate(local_paths, start=1):
+        print(f"[instagram:{slot}:image:{index}/{len(local_paths)}] {local_path}")
 
     if os.environ.get("DRY_RUN") == "1":
         print("[dry-run] skipped Supabase upload and Instagram publish")
@@ -910,11 +965,14 @@ def main(argv: list[str] | None = None) -> None:
 
     verify_instagram_access()
 
-    object_path = f"cards/{now.strftime('%Y/%m/%d')}/{filename}"
-    image_url = upload_to_supabase(local_path, object_path)
-    print(f"[supabase:image_url] {image_url}")
+    image_urls: list[str] = []
+    for local_path in local_paths:
+        object_path = f"cards/{now.strftime('%Y/%m/%d')}/{local_path.name}"
+        image_url = upload_to_supabase(local_path, object_path)
+        image_urls.append(image_url)
+        print(f"[supabase:image_url] {image_url}")
 
-    result = publish_to_instagram(image_url, caption)
+    result = publish_carousel_to_instagram(image_urls, caption)
     print(f"[instagram:posted] {json.dumps(result, ensure_ascii=False)}")
 
 

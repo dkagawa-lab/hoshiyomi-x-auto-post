@@ -10,6 +10,8 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 from generate_and_post import (
     JST,
     MAX_TWEET_CHARS,
+    NOON_SECTION_ORDER,
+    NOON_TWEETS_PER_SECTION,
     RANKING_CARD_SIZE,
     SITE_URL,
     build_morning_thread,
@@ -17,6 +19,8 @@ from generate_and_post import (
     build_night_thread,
     crosses,
     find_font,
+    fortune_ranking_items,
+    generate_fortune_ranking_card,
     generate_ranking_card,
     generate_three_fortunes_card,
     is_duplicate_tweet_response,
@@ -117,7 +121,7 @@ class AstrologyHelperTests(unittest.TestCase):
         self.assertIn("魚座", posts[4])
         self.assertTrue(all(len(post) <= MAX_TWEET_CHARS for post in posts))
 
-    def test_build_noon_thread_contains_three_fortunes(self):
+    def test_build_noon_thread_contains_independent_rankings(self):
         sky = {
             "date": "2026年06月12日",
             "weekday": "金曜日",
@@ -133,13 +137,15 @@ class AstrologyHelperTests(unittest.TestCase):
         }
         posts = build_noon_thread(sky)
 
-        self.assertEqual(len(posts), 5)
+        self.assertEqual(len(posts), len(NOON_SECTION_ORDER) * NOON_TWEETS_PER_SECTION)
         self.assertIn(SITE_URL, posts[0])
-        self.assertIn("恋愛", posts[0])
-        self.assertIn("金運", posts[1])
-        self.assertIn("仕事", posts[1])
-        self.assertIn("牡羊座", posts[1])
-        self.assertIn("魚座", posts[4])
+        self.assertIn("総合", posts[0])
+        self.assertIn("恋愛", posts[NOON_TWEETS_PER_SECTION])
+        self.assertIn("金運", posts[NOON_TWEETS_PER_SECTION * 2])
+        self.assertIn("仕事", posts[NOON_TWEETS_PER_SECTION * 3])
+        self.assertIn("1位", posts[1])
+        self.assertTrue(any("牡羊座" in post for post in posts))
+        self.assertTrue(any("魚座" in post for post in posts))
         self.assertTrue(all(len(post) <= MAX_TWEET_CHARS for post in posts))
 
     def test_x_zodiac_threads_vary_by_date(self):
@@ -194,6 +200,7 @@ class AstrologyHelperTests(unittest.TestCase):
 
         for sign in ("牡羊座", "牡牛座", "双子座", "蟹座", "獅子座", "乙女座", "天秤座", "蠍座", "射手座", "山羊座", "水瓶座", "魚座"):
             self.assertIn(sign, caption)
+        self.assertIn("総合運", caption)
         self.assertIn("恋愛運", caption)
         self.assertIn("金運", caption)
         self.assertIn("仕事運", caption)
@@ -273,6 +280,28 @@ class AstrologyHelperTests(unittest.TestCase):
         for item in items:
             self.assertEqual(set(item["fortunes"].keys()), {"love", "money", "work"})
 
+    def test_fortune_ranking_items_include_all_signs_for_each_section(self):
+        sky = {
+            "date": "2026年06月12日",
+            "weekday": "金曜日",
+            "moon_sign": "牡牛座",
+            "moon_phase": "新月前の月",
+            "events": [],
+            "retrogrades": ["冥王星(水瓶座)"],
+            "planet_signs": {
+                "金星": {"sign": "牡牛座"},
+                "木星": {"sign": "蟹座"},
+                "水星": {"sign": "双子座"},
+            },
+        }
+        expected_signs = set(("牡羊座", "牡牛座", "双子座", "蟹座", "獅子座", "乙女座", "天秤座", "蠍座", "射手座", "山羊座", "水瓶座", "魚座"))
+
+        for section_key in NOON_SECTION_ORDER:
+            items = fortune_ranking_items(sky, section_key)
+            self.assertEqual(len(items), 12)
+            self.assertEqual({item["sign"] for item in items}, expected_signs)
+            self.assertEqual([item["rank"] for item in items], list(range(1, 13)))
+
     def test_ranking_text_wraps_without_ellipsis(self):
         from PIL import Image, ImageDraw
 
@@ -324,6 +353,29 @@ class AstrologyHelperTests(unittest.TestCase):
 
         with Image.open(path) as image:
             self.assertEqual(image.size, RANKING_CARD_SIZE)
+
+    def test_fortune_ranking_card_image_size_for_each_section(self):
+        sky = {
+            "date": "2026年06月12日",
+            "weekday": "金曜日",
+            "moon_sign": "牡牛座",
+            "moon_phase": "新月前の月",
+            "events": [],
+            "retrogrades": ["冥王星(水瓶座)"],
+            "planet_signs": {
+                "金星": {"sign": "牡牛座"},
+                "木星": {"sign": "蟹座"},
+                "水星": {"sign": "双子座"},
+            },
+        }
+
+        from PIL import Image
+
+        for section_key in NOON_SECTION_ORDER:
+            output = pathlib.Path(f"/tmp/hoshiyomi-{section_key}-ranking-card-test.jpg")
+            path = generate_fortune_ranking_card(sky, section_key, output, datetime(2026, 6, 12, 12, 0, tzinfo=JST))
+            with Image.open(path) as image:
+                self.assertEqual(image.size, RANKING_CARD_SIZE)
 
     def test_instagram_media_download_error_detection(self):
         error = InstagramGraphAPIError(
